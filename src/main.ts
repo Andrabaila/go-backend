@@ -17,24 +17,45 @@ async function bootstrap() {
   let https = false;
 
   try {
-    // Локальная сборка HTTPS
-    const httpsOptions = {
-      key: fs.readFileSync(
-        path.join(__dirname, '..', 'cert', 'localhost-key.pem')
-      ),
-      cert: fs.readFileSync(
-        path.join(__dirname, '..', 'cert', 'localhost.pem')
-      ),
-    };
-    app = await NestFactory.create(AppModule, { httpsOptions });
-    https = true;
-    console.log('✅ Running with local HTTPS');
-  } catch {
-    // Если сертификатов нет — просто HTTP (для Railway)
+    // Попробуем несколько стандартных имён сертификатов в папке `cert`.
+    const certDir = path.join(__dirname, '..', 'cert');
+    const candidatePairs: Array<[string, string]> = [
+      ['key.pem', 'cert.pem'],
+      ['localhost+2-key.pem', 'localhost+2.pem'],
+      ['localhost+1-key.pem', 'localhost+1.pem'],
+      ['localhost-key.pem', 'localhost.pem'],
+    ];
+
+    let httpsOptions: { key: Buffer; cert: Buffer } | null = null;
+
+    for (const [keyName, certName] of candidatePairs) {
+      const keyPath = path.join(certDir, keyName);
+      const certPath = path.join(certDir, certName);
+      if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+        httpsOptions = {
+          key: fs.readFileSync(keyPath),
+          cert: fs.readFileSync(certPath),
+        };
+        console.log(`🔐 Using certs: ${keyName}, ${certName}`);
+        break;
+      }
+    }
+
+    if (httpsOptions) {
+      app = await NestFactory.create(AppModule, { httpsOptions });
+      https = true;
+      console.log('✅ Running with local HTTPS');
+    } else {
+      // Если сертификатов нет — просто HTTP (например, на хостинге HTTPS обеспечивает прокси)
+      app = await NestFactory.create(AppModule);
+      console.log(
+        '⚠️ Certificates not found in cert/, running on HTTP (proxy provides HTTPS)'
+      );
+    }
+  } catch (err) {
+    // В случае любой ошибки — fallback на HTTP
+    console.error('❌ HTTPS setup failed, falling back to HTTP:', err);
     app = await NestFactory.create(AppModule);
-    console.log(
-      '⚠️ Certificates not found, running on HTTP (proxy provides HTTPS)'
-    );
   }
 
   app.enableCors({
