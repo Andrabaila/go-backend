@@ -2,19 +2,18 @@
 
 ## Architecture Overview
 
-- **Monorepo Structure**: Turbo-managed workspace with backend (NestJS) in [apps/backend/](apps/backend/), frontend (React/Vite) in [apps/frontend/](apps/frontend/), shared packages in [packages/](packages/).
-- **Backend Modules**: Feature-based modules (auth, game-objects, players, quests, tiles, users) in `src/`, each with controller, service, entity. See [apps/backend/src/app.module.ts](apps/backend/src/app.module.ts). Database: TypeORM with Postgres; entities like Player, User, Quest.
-- **Frontend Components**: Grouped by features in `src/components/` (e.g., map/, player/), with hooks in `src/hooks/`, API calls in `src/api/`. See [apps/frontend/src/App.tsx](apps/frontend/src/App.tsx).
-- **Data Flow**: Frontend uses Axios for API calls to backend endpoints; auth via JWT with token stored in localStorage. Player position and explored areas cached in localStorage. Fog of war implemented with dynamic map layers and persistence.
+- **Monorepo Structure**: Turbo-managed workspace now containing only the backend (NestJS) in `apps/backend/` and shared packages in `packages/`.
+- **Backend Modules**: Feature-based modules (auth, game-objects, players, quests, tiles, users) in `src/`, each with controller, service, entity. See `apps/backend/src/app.module.ts`. Database: TypeORM with Postgres; entities like Player, User, Quest.
+- **Data Flow**: Backend exposes REST API endpoints used by clients; authentication via JWT and game state persisted in the database.
 - **Game Mechanics**: Location-based exploration game with fog of war (30m radius visibility), multiplayer shared world, quests, artifacts. Map uses Leaflet.js with GeoJSON.
 
 ## Developer Workflows
 
-- **Development**: `npm run dev` runs backend (`nest start --watch`) and frontend (`vite --open`) in parallel via Turbo.
+- **Development**: `npm run dev --filter=apps/backend` starts the backend in watch mode using Turbo.
 - **Build**: `npm run build` builds all apps with Turbo dependencies.
-- **Testing**: `npm run test` runs Jest (backend) and Vitest (frontend); e2e in [apps/backend/test/](apps/backend/test/).
+- **Testing**: `npm run test --filter=apps/backend` runs Jest for backend unit and e2e tests (see `apps/backend/test/`).
 - **Linting**: `npm run lint` enforces ESLint + Prettier; auto-fix with `lint-staged`. Husky for pre-commit hooks.
-- **Debugging**: Backend debug with `npm run start:debug` in backend; frontend via Vite dev server. Geolocation errors logged to console.
+- **Debugging**: Backend debug with `npm run start:debug --filter=apps/backend`.
 
 ## Coding Conventions
 
