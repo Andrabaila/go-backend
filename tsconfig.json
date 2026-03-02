@@ -19,7 +19,8 @@
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"],
-      "@shared/*": ["../../packages/shared/dist/*"]
+      // backend moved to root; shared package now at packages/shared
+      "@shared/*": ["packages/shared/dist/*"]
     }
   },
   "include": ["src", "env.d.ts"],

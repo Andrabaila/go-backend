@@ -7,7 +7,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const backendRoot = path.join(__dirname, 'apps/backend');
+// root now holds the backend sources
+const backendRoot = __dirname;
 const sharedRoot = path.join(__dirname, 'packages/shared');
 
 export default [
@@ -28,7 +29,7 @@ export default [
   },
 
   {
-    files: ['apps/backend/**/*.{ts,tsx}'],
+    files: ['**/*.{ts,tsx}'],
     languageOptions: {
       parserOptions: {
         project: [path.join(backendRoot, 'tsconfig.json')],

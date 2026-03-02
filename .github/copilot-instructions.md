@@ -2,18 +2,18 @@
 
 ## Architecture Overview
 
-- **Monorepo Structure**: Turbo-managed workspace now containing only the backend (NestJS) in `apps/backend/` and shared packages in `packages/`.
-- **Backend Modules**: Feature-based modules (auth, game-objects, players, quests, tiles, users) in `src/`, each with controller, service, entity. See `apps/backend/src/app.module.ts`. Database: TypeORM with Postgres; entities like Player, User, Quest.
+- **Monorepo Structure**: Turbo-managed workspace now containing only the backend (NestJS) at the repository root and shared packages in `packages/`.
+- **Backend Modules**: Feature-based modules (auth, game-objects, players, quests, tiles, users) in `src/`, each with controller, service, entity. See `src/app.module.ts`. Database: TypeORM with Postgres; entities like Player, User, Quest.
 - **Data Flow**: Backend exposes REST API endpoints used by clients; authentication via JWT and game state persisted in the database.
 - **Game Mechanics**: Location-based exploration game with fog of war (30m radius visibility), multiplayer shared world, quests, artifacts. Map uses Leaflet.js with GeoJSON.
 
 ## Developer Workflows
 
-- **Development**: `npm run dev --filter=apps/backend` starts the backend in watch mode using Turbo.
+- **Development**: `npm run dev` starts the backend in watch mode.
 - **Build**: `npm run build` builds all apps with Turbo dependencies.
-- **Testing**: `npm run test --filter=apps/backend` runs Jest for backend unit and e2e tests (see `apps/backend/test/`).
+- **Testing**: `npm run test` runs Jest for backend unit and e2e tests (see `test/`).
 - **Linting**: `npm run lint` enforces ESLint + Prettier; auto-fix with `lint-staged`. Husky for pre-commit hooks.
-- **Debugging**: Backend debug with `npm run start:debug --filter=apps/backend`.
+- **Debugging**: Backend debug with `npm run start:debug`.
 
 ## Coding Conventions
 
