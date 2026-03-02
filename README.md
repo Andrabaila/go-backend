@@ -1,120 +1,94 @@
-# Go Walk
+<p align="center">
+  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+</p>
 
-## 1. Description
+[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
+[circleci-url]: https://circleci.com/gh/nestjs/nest
 
-**Go Walk** is a multiplayer location-based exploration game.  
-Players navigate a real-world map or virtual representation to explore, collect, and interact with the game world. The focus is on exploration, character progression, and in-game economy — there is no combat.
+  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
+    <p align="center">
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
+<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
+<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
+<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
+<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
+  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
+    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
+  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+</p>
+  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
+  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-### Key Features
+## Description
 
-- Most objects are global, some are available only on special map layers (e.g., time-based or visible only to certain players).
-- **Fog of War**:
-  - Visible around the player in a 50-meter radius.
-  - Progress is preserved between sessions.
-  - If other players modify the map since the last session, the player must re-explore it. Modified areas remain visible but become non-interactive.
-  - Players can share explored areas and purchase exploration data.
+This repository contains the backend API for the **Go Walk** exploration game. The frontend has been removed, and the codebase now focuses on the NestJS server and shared libraries.
 
-- Cutting-edge TypeScript:
-  - Strict type checking with experimental options (`erasableSyntaxOnly`, `noUncheckedSideEffectImports`)
-  - Modern ECMAScript modules (`ESNext`)
-  - Bundler mode with `allowImportingTsExtensions` and `verbatimModuleSyntax`
+## Project setup
 
-- Modern React features:
-  - React 19 with concurrent features
-  - Hooks fully enforced by ESLint
-  - Fast Refresh enabled via `@vitejs/plugin-react`
+```bash
+$ npm install
+```
 
----
+## Compile and run the project
 
-## 2. Technology Stack
+```bash
+# development (watch)
+$ npm run dev
 
-- **Map:** Leaflet.js + GeoJSON (OpenStreetMap as source)
-- **Frontend:** TypeScript + React + Tailwind CSS
-- **Backend:** Node.js + Database (PostgreSQL)
-- **Testing:** Vitest + Testing Library + jsdom
-- **Mobile Build:** React Native
-- **Bundler:** Vite (with cutting-edge TS support and aliasing)
+# production build
+$ npm run build
 
----
+# start built app
+$ npm run start:prod
+```
 
-## 3. Functionality
+## Run tests
 
-### World Exploration
+```bash
+# unit tests
+$ npm run test
 
-- Move in the real world or on a virtual map.
-- Discover new areas by exploring the map.
-- Fog of War hides unexplored regions; new visibility circles open as the player moves.
-- Collect artifacts, information, and quests at specific locations.
-- Achievements based on explored areas, distance traveled, and completed story elements.
-- Create and edit custom objects.
+# e2e tests
+$ npm run test:e2e
 
-### Multiplayer Features
+# coverage report
+$ npm run test:cov
+```
 
-- Shared world with personal layers for each player.
-- Players can share explored regions.
-- Competitive metrics:
-  - Who explores the most territory.
-  - Who covers the most distance.
-  - Who completes the most quests and contributes most to the shared game world.
+## Notes
 
----
+- Backend modules are defined under `src/` (auth, game-objects, players, quests, tiles, users).
+- Shared utility types and constants live in `packages/shared`.
 
-## 4. MVP: Single Explorer
+Refer to `src/app.module.ts` for module organization and `packages/shared/src` for shared types.
 
-- **Area:** Stary Imielin, Warsaw (approx. 1.5 × 1.5 km, ~2 km²).
-- Player explores the map and clears Fog of War.
-- Progress is saved locally (localStorage) or minimally on the server.
-- Indicators for:
-  - Map completion percentage
-  - Collected artifacts
-  - Completed quests
-- One mission/campaign to test gameplay.
-- Player goal: explore the whole map, collect all artifacts, complete all quests, finish the mission.
-- Character progression depends on achieved goals.
-- Purpose: validate the core exploration mechanic with players.
+For deployment guidance, consult the [NestJS deployment docs](https://docs.nestjs.com/deployment).
 
----
+## Resources
 
-## 5. Modern Styling Approaches
+Check out a few resources that may come in handy when working with NestJS:
 
-### 5.1 Base Document Styles (`index.css`)
+- Visit the [NestJS Documentation](https://docs.nestjs.com) for framework reference.
+- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
+- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
+- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
+- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
+- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
+- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
+- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
 
-- Root typography (system font stack, line height, font smoothing)
-- Color scheme (light/dark mode via `prefers-color-scheme`)
-- Default link and button styles
-- Basic theme overrides (background and text colors)
+## License
 
-### 5.2 Global Styles (`global.css`)
+This backend is licensed under the project's LICENSE file.
 
-- Modern reset (margin, padding, box-sizing)
-- Full-size root containers (`html, body, #root { height: 100%; width: 100%; }`)
-- Minimal baseline styles on top of Tailwind Preflight
-- No `.app` container (replaced by Tailwind utility classes directly in JSX)
+## Stay in touch
 
-### 5.3 Tailwind CSS
+- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
+- Website - [https://nestjs.com](https://nestjs.com/)
+- Twitter - [@nestframework](https://twitter.com/nestframework)
 
-- Primary styling approach for layout and components
-- Utility classes for spacing, flex/grid layouts, responsiveness
-- Used for interactive elements (buttons, overlays, map layers)
-- Quick hover effects, transitions, and adaptive design
+## License
 
-### 5.4 Inline Styles
-
-- Dynamic runtime properties:
-  - Marker coordinates
-  - Highlighting the active player
-  - Border colors based on state
-  - Window/container-dependent sizes
-  - Width/height computed via JS (progress-based or responsive layouts)
-
----
-
-## 6. Cutting-Edge Development Practices
-
-- **Strict TypeScript:** full type safety with experimental compiler options.
-- **Linting & Formatting:** ESLint + Prettier integration, unused directives enforced.
-- **Vitest:** modern unit testing with `setupTests.ts` for global test setup (`@testing-library/jest-dom`).
-- **Fast Refresh & Hooks:** enforced via ESLint plugins and Vite React plugin.
-- **Fog of War Mechanics:** implemented with local caching, dynamic map layers, and persistence across sessions.
-
----
+Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
