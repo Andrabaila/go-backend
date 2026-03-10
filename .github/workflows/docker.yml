@@ -47,6 +47,7 @@ jobs:
             docker stop go-backend || true &&
             docker rm go-backend || true &&
             docker run -d \
+              --env-file /home/ya/.env \
               --name go-backend \
               --restart always \
               -p 3000:3000 \
