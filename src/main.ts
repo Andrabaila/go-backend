@@ -1,3 +1,4 @@
+// Main entry point for the NestJS application
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { ValidationPipe } from '@nestjs/common';
@@ -58,21 +59,21 @@ async function bootstrap() {
     app = await NestFactory.create(AppModule);
   }
 
-app.enableCors({
-  origin: (origin, callback) => {
-    const allowedOrigins = (process.env.CLIENT_URLS || '')
-      .split(',')
-      .map(url => url.trim());
+  app.enableCors({
+    origin: (origin, callback) => {
+      const allowedOrigins = (process.env.CLIENT_URLS || '')
+        .split(',')
+        .map((url) => url.trim());
 
-    // Разрешаем, если origin пустой (например, Postman) или находится в списке
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-});
+      // Разрешаем, если origin пустой (например, Postman) или находится в списке
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
