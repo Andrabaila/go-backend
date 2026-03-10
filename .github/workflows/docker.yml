@@ -28,3 +28,27 @@ jobs:
           context: .
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/go-backend:latest
+
+      - name: Connect Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Deploy to server
+        run: |
+          ssh -o StrictHostKeyChecking=no ya@100.110.45.76 "
+            docker system prune -f &&
+            docker stop go-backend || true &&
+            docker rm go-backend || true &&
+            docker run -d \
+              --name go-backend \
+              --restart always \
+              -p 3000:3000 \
+              ${{ secrets.DOCKERHUB_USERNAME }}/go-backend:latest
+          "
