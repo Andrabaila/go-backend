@@ -27,10 +27,18 @@ function requireEnv(name: string): string {
 }
 
 function getDatabaseHost(): string {
-  return process.env.DATABASE_HOST || process.env.DATABASE_HOST_FALLBACK || 'localhost';
+  return (
+    process.env.DATABASE_HOST ||
+    process.env.DATABASE_HOST_FALLBACK ||
+    'localhost'
+  );
 }
 
-function canReachHost(host: string, port: number, timeoutMs = 1500): Promise<boolean> {
+function canReachHost(
+  host: string,
+  port: number,
+  timeoutMs = 1500
+): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = net.createConnection({ host, port });
     let resolved = false;

@@ -22,6 +22,6 @@
       "@shared/*": ["packages/shared/dist/*"]
     }
   },
-  "include": ["src", "env.d.ts"],
+  "include": ["src", "test", "env.d.ts"],
   "exclude": ["dist", "node_modules"]
 }

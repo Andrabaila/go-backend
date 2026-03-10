@@ -26,6 +26,9 @@
     "format:check": "prettier --check .",
     "prepare": "husky"
   },
+  "lint-staged": {
+    "*.{ts,tsx}": ["eslint --fix", "prettier --write"]
+  },
   "jest": {
     "collectCoverageFrom": [
       "**/*.(t|j)s"
