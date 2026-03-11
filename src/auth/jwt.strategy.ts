@@ -4,7 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 
 // Тип JWT payload
 interface JwtPayload {
-  sub: number;
+  sub: string;
   email: string;
 }
 
@@ -14,7 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'secret123',
+      secretOrKey: process.env.JWT_SECRET ?? 'super-secret-key',
     });
   }
 
