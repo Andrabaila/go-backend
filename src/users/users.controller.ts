@@ -1,8 +1,16 @@
-import { Controller, Get, Param, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  NotFoundException,
+  UseGuards,
+} from '@nestjs/common';
 import { UsersService } from './users.service.js';
 import type { User } from './user.entity.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 
 @Controller('users')
+@UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -11,8 +19,12 @@ export class UsersController {
    * Возвращает всех пользователей без паролей
    */
   @Get()
-  async findAll(): Promise<Omit<User, 'password'>[]> {
-    return this.usersService.findAll();
+  async findAll(): Promise<Omit<User, 'passwordHash'>[]> {
+    const users = await this.usersService.findAll();
+    return users.map((user) => ({
+      id: user.id,
+      email: user.email,
+    }));
   }
 
   /**
@@ -22,7 +34,7 @@ export class UsersController {
   @Get(':email')
   async findByEmail(
     @Param('email') email: string
-  ): Promise<Omit<User, 'password'>> {
+  ): Promise<Omit<User, 'passwordHash'>> {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new NotFoundException(`User with email ${email} not found`);
@@ -31,7 +43,6 @@ export class UsersController {
     return {
       id: user.id,
       email: user.email,
-      passwordHash: user.passwordHash,
     };
   }
 }

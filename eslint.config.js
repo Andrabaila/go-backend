@@ -41,7 +41,6 @@ export default [
     },
   },
 
-
   {
     files: ['packages/shared/**/*.ts'],
     languageOptions: {
