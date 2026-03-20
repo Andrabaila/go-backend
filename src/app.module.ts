@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import net from 'node:net';
+import { URL } from 'node:url';
 
 import { Module } from '@nestjs/common';
 import { TypeOrmModule, type TypeOrmModuleOptions } from '@nestjs/typeorm';
@@ -65,7 +66,15 @@ function canReachHost(
 
 async function getDatabaseConnectionOptions(): Promise<TypeOrmModuleOptions> {
   if (process.env.DATABASE_URL) {
-    console.log('[DB] Using DATABASE_URL for PostgreSQL connection');
+    try {
+      const parsed = new URL(process.env.DATABASE_URL);
+      const dbName = parsed.pathname.replace('/', '');
+      console.log(
+        `[DB] Using DATABASE_URL host=${parsed.hostname} port=${parsed.port || '5432'} database=${dbName}`
+      );
+    } catch {
+      console.log('[DB] Using DATABASE_URL for PostgreSQL connection');
+    }
     return {
       type: 'postgres',
       url: process.env.DATABASE_URL,
