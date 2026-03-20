@@ -10,6 +10,8 @@ import {
 } from '@nestjs/common';
 import { QuestsService } from './quests.service.js';
 import { Quest } from './quest.entity.js';
+import type { CreateQuestInput } from './quests.service.js';
+import { QuestRecord } from './quest-record.entity.js';
 
 @Controller('quests')
 export class QuestsController {
@@ -22,6 +24,11 @@ export class QuestsController {
     @Body('playerId') playerId?: string
   ): Promise<Quest> {
     return this.questsService.create(title, description, playerId);
+  }
+
+  @Post('new')
+  async createNew(@Body() input: CreateQuestInput): Promise<QuestRecord> {
+    return this.questsService.createQuest(input);
   }
 
   @Get()

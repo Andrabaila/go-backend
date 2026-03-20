@@ -13,10 +13,14 @@ import { AuthModule } from './auth/auth.module.js';
 import { UsersModule } from './users/users.module.js';
 import { TileModule } from './tiles/tile.module.js';
 import { QuestsModule } from './quests/quests.module.js';
+import { AdminModule } from './admin/admin.module.js';
 
 import { Player } from './players/player.entity.js';
 import { User } from './users/user.entity.js';
 import { Quest } from './quests/quest.entity.js';
+import { QuestRecord } from './quests/quest-record.entity.js';
+import { QuestTranslation } from './quests/quest-translation.entity.js';
+import { Language } from './quests/language.entity.js';
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -68,7 +72,7 @@ async function getDatabaseConnectionOptions(): Promise<TypeOrmModuleOptions> {
       ssl: {
         rejectUnauthorized: false,
       },
-      entities: [Player, User, Quest],
+      entities: [Player, User, Quest, QuestRecord, QuestTranslation, Language],
       synchronize: true,
     };
   }
@@ -102,7 +106,7 @@ async function getDatabaseConnectionOptions(): Promise<TypeOrmModuleOptions> {
     username,
     password,
     database,
-    entities: [Player, User, Quest],
+    entities: [Player, User, Quest, QuestRecord, QuestTranslation, Language],
     synchronize: true,
   };
 }
@@ -118,6 +122,7 @@ async function getDatabaseConnectionOptions(): Promise<TypeOrmModuleOptions> {
     UsersModule,
     TileModule,
     QuestsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
