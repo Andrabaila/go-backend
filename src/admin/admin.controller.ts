@@ -12,16 +12,293 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Language } from '../quests/language.entity.js';
+import { QuestRecord } from '../quests/quest-record.entity.js';
+import { QuestTranslation } from '../quests/quest-translation.entity.js';
 
 @Controller('admin')
 export class AdminController {
   constructor(
     @InjectRepository(Language)
     private readonly languageRepo: Repository<Language>,
+    @InjectRepository(QuestRecord)
+    private readonly questRecordRepo: Repository<QuestRecord>,
     private readonly dataSource: DataSource
   ) {}
 
+  @Get()
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  getAdminHome(): string {
+    return `<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin · Home</title>
+    <style>
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+        background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
+        color: #1f2a44;
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 48px auto;
+        padding: 24px;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+      }
+      @media (max-width: 600px) {
+        .wrap { margin: 16px; padding: 16px; border-radius: 12px; }
+      }
+      h1 { margin: 0 0 12px; font-size: 28px; }
+      p { margin: 0 0 24px; color: #4a5875; }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+      }
+      a.card {
+        display: block;
+        padding: 18px;
+        border-radius: 14px;
+        border: 1px solid #e0e7f6;
+        background: #f9fbff;
+        color: inherit;
+        text-decoration: none;
+        transition: transform 120ms ease, box-shadow 120ms ease;
+      }
+      a.card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+      }
+      .card h2 { margin: 0 0 6px; font-size: 18px; }
+      .card span { color: #4a5875; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Админка</h1>
+      <p>Быстрые ссылки на управление справочниками.</p>
+      <div class="grid">
+        <a class="card" href="/admin/quests">
+          <h2>Квесты</h2>
+          <span>Добавление и перевод</span>
+        </a>
+        <a class="card" href="/admin/languages">
+          <h2>Языки</h2>
+          <span>Справочник языков и default</span>
+        </a>
+      </div>
+    </div>
+  </body>
+</html>`;
+  }
+
   @Get('quests')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  getQuestsList(): string {
+    return `<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin · Quests</title>
+    <style>
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+        background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
+        color: #1f2a44;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 48px auto;
+        padding: 24px;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+      }
+      .cards { display: none; }
+      .card {
+        border: 1px solid #e6ecf8;
+        border-radius: 12px;
+        padding: 12px;
+        background: #f9fbff;
+        display: grid;
+        gap: 6px;
+      }
+      .card h3 { margin: 0; font-size: 16px; }
+      .meta { color: #4a5875; font-size: 13px; }
+      @media (max-width: 600px) {
+        .wrap { margin: 16px; padding: 16px; border-radius: 12px; }
+        table.desktop { display: none; }
+        .cards { display: grid; gap: 10px; }
+        .actions { flex-direction: column; align-items: stretch; gap: 8px; }
+      }
+      h1 { margin: 0 0 12px; font-size: 28px; }
+      p { margin: 0 0 20px; color: #4a5875; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e6ecf8; }
+      th { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7a99; }
+      .actions { display: flex; gap: 12px; margin: 12px 0 18px; align-items: center; }
+      a.btn, button {
+        border: 0;
+        padding: 10px 16px;
+        border-radius: 10px;
+        background: #2d6cdf;
+        color: white;
+        font-size: 14px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+      }
+      button.delete { background: #d9534f; }
+      button:disabled { background: #9db7ea; cursor: not-allowed; }
+      .status { padding: 10px; border-radius: 10px; background: #f1f5ff; color: #2d3b5e; }
+      .status.error { background: #fff1f1; color: #8a2b2b; }
+      .status.success { background: #eefaf1; color: #1f6a37; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Квесты</h1>
+      <p>Список существующих квестов. Можно удалить и перейти к форме добавления.</p>
+      <div class="actions">
+        <a class="btn" href="/admin/quests/add">Добавить квест</a>
+        <div id="status" class="status">Загружаю...</div>
+      </div>
+      <table class="desktop">
+        <thead>
+          <tr>
+            <th>Название</th>
+            <th>Город</th>
+            <th>Район</th>
+            <th>Длительность</th>
+            <th>Цена</th>
+            <th>Активен</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="cards" id="cards"></div>
+    </div>
+
+    <script>
+      const rowsEl = document.getElementById('rows');
+      const statusEl = document.getElementById('status');
+      const cardsEl = document.getElementById('cards');
+
+      function setStatus(text, kind) {
+        statusEl.textContent = text;
+        statusEl.classList.remove('error', 'success');
+        if (kind) statusEl.classList.add(kind);
+      }
+
+      async function loadQuests() {
+        setStatus('Загружаю...', null);
+        const res = await fetch('/admin/api/quests');
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.message || data?.error || 'Ошибка загрузки');
+        }
+        rowsEl.innerHTML = '';
+        cardsEl.innerHTML = '';
+        data.forEach((q) => {
+          rowsEl.appendChild(renderRow(q));
+          cardsEl.appendChild(renderCard(q));
+        });
+        setStatus('Готово', 'success');
+      }
+
+      function renderRow(q) {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + (q.title || '-') + '</td>' +
+          '<td>' + (q.city || '-') + '</td>' +
+          '<td>' + (q.district || '-') + '</td>' +
+          '<td>' + q.duration + ' мин</td>' +
+          '<td>' + q.price + '</td>' +
+          '<td>' + (q.is_active ? 'да' : 'нет') + '</td>' +
+          '<td><button class="delete">Удалить</button></td>';
+
+        const delBtn = tr.querySelector('button.delete');
+        delBtn.addEventListener('click', async () => {
+          if (!confirm('Удалить квест?')) return;
+          delBtn.disabled = true;
+          try {
+            const res = await fetch('/admin/api/quests/' + encodeURIComponent(q.id), {
+              method: 'DELETE',
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+              const msg = data?.message || data?.error || 'Ошибка удаления';
+              throw new Error(msg);
+            }
+            await loadQuests();
+          } catch (err) {
+            const msg = err && err.message ? err.message : err;
+            setStatus('Ошибка: ' + msg, 'error');
+          } finally {
+            delBtn.disabled = false;
+          }
+        });
+
+        return tr;
+      }
+
+      function renderCard(q) {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML =
+          '<h3>' + (q.title || '-') + '</h3>' +
+          '<div class="meta">' + (q.city || '-') + ' · ' + (q.district || '-') + '</div>' +
+          '<div class="meta">Длительность: ' + q.duration + ' мин</div>' +
+          '<div class="meta">Цена: ' + q.price + '</div>' +
+          '<div class="meta">Активен: ' + (q.is_active ? 'да' : 'нет') + '</div>' +
+          '<button class="delete">Удалить</button>';
+
+        const delBtn = div.querySelector('button.delete');
+        delBtn.addEventListener('click', async () => {
+          if (!confirm('Удалить квест?')) return;
+          delBtn.disabled = true;
+          try {
+            const res = await fetch('/admin/api/quests/' + encodeURIComponent(q.id), {
+              method: 'DELETE',
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+              const msg = data?.message || data?.error || 'Ошибка удаления';
+              throw new Error(msg);
+            }
+            await loadQuests();
+          } catch (err) {
+            const msg = err && err.message ? err.message : err;
+            setStatus('Ошибка: ' + msg, 'error');
+          } finally {
+            delBtn.disabled = false;
+          }
+        });
+
+        return div;
+      }
+
+      loadQuests().catch((err) => {
+        const msg = err && err.message ? err.message : err;
+        setStatus('Ошибка: ' + msg, 'error');
+      });
+    </script>
+  </body>
+</html>`;
+  }
+
+  @Get('quests/add')
   @Header('Content-Type', 'text/html; charset=utf-8')
   getQuestsAdmin(): string {
     return `<!doctype html>
@@ -527,6 +804,58 @@ export class AdminController {
       throw new NotFoundException('Language not found');
     }
     await this.languageRepo.delete({ code });
+    return { ok: true };
+  }
+
+  @Get('api/quests')
+  async listQuests(): Promise<
+    Array<{
+      id: string;
+      duration: number;
+      price: number;
+      is_active: boolean;
+      title?: string;
+      district?: string;
+      city?: string;
+    }>
+  > {
+    const rows = await this.dataSource
+      .createQueryBuilder(QuestRecord, 'q')
+      .leftJoin(
+        QuestTranslation,
+        't',
+        't.quest_id = q.id AND t.language_code = (SELECT code FROM languages WHERE is_default = true LIMIT 1)'
+      )
+      .select([
+        'q.id as id',
+        'q.duration as duration',
+        'q.price as price',
+        'q.is_active as is_active',
+        't.title as title',
+        't.district as district',
+        't.city as city',
+      ])
+      .orderBy('q.created_at', 'DESC')
+      .getRawMany();
+
+    return rows.map((row) => ({
+      id: row.id,
+      duration: Number(row.duration),
+      price: Number(row.price),
+      is_active: row.is_active === true || row.is_active === 't',
+      title: row.title ?? undefined,
+      district: row.district ?? undefined,
+      city: row.city ?? undefined,
+    }));
+  }
+
+  @Delete('api/quests/:id')
+  async deleteQuest(@Param('id') id: string): Promise<{ ok: true }> {
+    const existing = await this.questRecordRepo.findOne({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Quest not found');
+    }
+    await this.questRecordRepo.delete({ id });
     return { ok: true };
   }
 }
