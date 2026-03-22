@@ -62,10 +62,23 @@ async function bootstrap() {
     origin: (origin, callback) => {
       const allowedOrigins = (process.env.CLIENT_URLS || '')
         .split(',')
-        .map((url) => url.trim());
+        .map((url) => url.trim())
+        .filter(Boolean);
+
+      const isLocalhost =
+        typeof origin === 'string' &&
+        (origin.startsWith('http://localhost') ||
+          origin.startsWith('https://localhost'));
+      const isTailnet =
+        typeof origin === 'string' && origin.endsWith('.tail1d4748.ts.net');
 
       // Разрешаем, если origin пустой (например, Postman) или находится в списке
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        isLocalhost ||
+        isTailnet
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));

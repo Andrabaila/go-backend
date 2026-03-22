@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 import { QuestRecord } from './quest-record.entity.js';
 
-@Entity({ name: 'quest_translations' })
+@Entity({ name: 'quest_translations', synchronize: false })
 @Index(['questId', 'languageCode'], { unique: true })
 export class QuestTranslation {
   @PrimaryGeneratedColumn('uuid')
@@ -32,7 +32,7 @@ export class QuestTranslation {
   @Column({ type: 'text' })
   city!: string;
 
-  @ManyToOne(() => QuestRecord, (quest) => quest.translations, {
+  @ManyToOne(() => QuestRecord, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'quest_id' })

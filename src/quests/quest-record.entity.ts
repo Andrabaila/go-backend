@@ -3,11 +3,9 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  OneToMany,
 } from 'typeorm';
-import { QuestTranslation } from './quest-translation.entity.js';
 
-@Entity({ name: 'quests' })
+@Entity({ name: 'quests', synchronize: false })
 export class QuestRecord {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -30,6 +28,5 @@ export class QuestRecord {
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 
-  @OneToMany(() => QuestTranslation, (translation) => translation.quest)
-  translations?: QuestTranslation[];
+  // Relation removed to avoid ESM circular init; translations live in quest_translations.
 }
