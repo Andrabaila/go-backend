@@ -1,4 +1,4 @@
-import { Injectable, type OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Quest } from './quest.entity.js';
@@ -24,7 +24,7 @@ type QuestTranslationInput = Pick<
 >;
 
 @Injectable()
-export class QuestsService implements OnModuleInit {
+export class QuestsService {
   constructor(
     @InjectRepository(Quest)
     private readonly questRepo: Repository<Quest>,
@@ -32,56 +32,6 @@ export class QuestsService implements OnModuleInit {
     private readonly languageRepo: Repository<Language>,
     private readonly dataSource: DataSource
   ) {}
-
-  async onModuleInit(): Promise<void> {
-    const desiredObjectives = {
-      type: 'visit_points' as const,
-      requiredCount: 3,
-      radiusMeters: 50,
-      points: [
-        { id: 'imielin-1', label: 'Метка 1', lat: 52.141771, lng: 21.025956 },
-        { id: 'imielin-2', label: 'Метка 2', lat: 52.144618, lng: 21.03702 },
-        { id: 'imielin-3', label: 'Метка 3', lat: 52.150143, lng: 21.025983 },
-      ],
-    };
-
-    const existing = await this.questRepo.findOne({
-      where: { title: 'Первый след' },
-    });
-
-    if (existing) {
-      const updates: Partial<Quest> = {};
-      if (!existing.objectives) {
-        updates.objectives = desiredObjectives;
-        updates.status = existing.status ?? 'active';
-      }
-      if (!existing.reward) {
-        updates.reward = {
-          gold: 30,
-          item: 'Старый жетон',
-        };
-      }
-      if (Object.keys(updates).length > 0) {
-        await this.questRepo.update(existing.id, {
-          ...updates,
-        });
-      }
-      return;
-    }
-
-    const quest = this.questRepo.create({
-      title: 'Первый след',
-      description:
-        'Посети 3 метки в Старом Имелине. Каждая метка засчитывается при подходе на 50 м. Награда: 30 монет и артефакт “Старый жетон”.',
-      status: 'active',
-      objectives: desiredObjectives,
-      reward: {
-        gold: 30,
-        item: 'Старый жетон',
-      },
-    });
-    await this.questRepo.save(quest);
-  }
 
   async create(
     title: string,
