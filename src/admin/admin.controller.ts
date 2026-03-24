@@ -97,6 +97,10 @@ export class AdminController {
           <h2>UI</h2>
           <span>Сущности интерфейса</span>
         </a>
+        <a class="card" href="/admin/locations">
+          <h2>Locations</h2>
+          <span>Координаты локаций</span>
+        </a>
       </div>
     </div>
   </body>
@@ -914,6 +918,187 @@ export class AdminController {
 </html>`;
   }
 
+  @Get('locations')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  getLocationsAdmin(): string {
+    return `<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin · Locations</title>
+    <style>
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+        background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
+        color: #1f2a44;
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 48px auto;
+        padding: 24px;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+      }
+      @media (max-width: 600px) {
+        .wrap { margin: 16px; padding: 16px; border-radius: 12px; }
+        table { display: block; overflow-x: auto; }
+        .actions { flex-direction: column; align-items: stretch; gap: 8px; }
+      }
+      h1 { margin: 0 0 16px; font-size: 28px; }
+      p { margin: 0 0 24px; color: #4a5875; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e6ecf8; }
+      th { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7a99; }
+      input[type="number"] {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ccd6eb;
+        border-radius: 8px;
+        background: #f9fbff;
+      }
+      .actions { display: flex; gap: 12px; margin-top: 16px; align-items: center; }
+      button {
+        border: 0;
+        padding: 10px 16px;
+        border-radius: 10px;
+        background: #2d6cdf;
+        color: white;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      button.delete { background: #d9534f; }
+      button:disabled { background: #9db7ea; cursor: not-allowed; }
+      .status { padding: 10px; border-radius: 10px; background: #f1f5ff; color: #2d3b5e; }
+      .status.error { background: #fff1f1; color: #8a2b2b; }
+      .status.success { background: #eefaf1; color: #1f6a37; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Locations</h1>
+      <p>Список координат из таблицы <code>locations</code>. Можно добавить и удалить.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Lat</th>
+            <th>Lng</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="actions" style="margin-top: 20px;">
+        <input id="new-lat" type="number" step="0.000001" placeholder="lat" />
+        <input id="new-lng" type="number" step="0.000001" placeholder="lng" />
+        <button id="add-btn">Добавить</button>
+      </div>
+      <div class="actions">
+        <div id="status" class="status">Загружаю...</div>
+      </div>
+    </div>
+
+    <script>
+      const rowsEl = document.getElementById('rows');
+      const statusEl = document.getElementById('status');
+      const addBtn = document.getElementById('add-btn');
+      const newLat = document.getElementById('new-lat');
+      const newLng = document.getElementById('new-lng');
+
+      function setStatus(text, kind) {
+        statusEl.textContent = text;
+        statusEl.classList.remove('error', 'success');
+        if (kind) statusEl.classList.add(kind);
+      }
+
+      async function loadLocations() {
+        setStatus('Загружаю...', null);
+        const res = await fetch('/admin/api/locations');
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.message || data?.error || 'Ошибка загрузки');
+        }
+        rowsEl.innerHTML = '';
+        data.forEach((item) => rowsEl.appendChild(renderRow(item)));
+        setStatus('Готово', 'success');
+      }
+
+      function renderRow(item) {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + item.id + '</td>' +
+          '<td>' + item.lat + '</td>' +
+          '<td>' + item.lng + '</td>' +
+          '<td><button class="delete">Удалить</button></td>';
+
+        const delBtn = tr.querySelector('button.delete');
+        delBtn.addEventListener('click', async () => {
+          if (!confirm('Удалить локацию?')) return;
+          delBtn.disabled = true;
+          try {
+            const res = await fetch('/admin/api/locations/' + encodeURIComponent(item.id), {
+              method: 'DELETE',
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+              const msg = data?.message || data?.error || 'Ошибка удаления';
+              throw new Error(msg);
+            }
+            await loadLocations();
+          } catch (err) {
+            const msg = err && err.message ? err.message : err;
+            setStatus('Ошибка: ' + msg, 'error');
+          } finally {
+            delBtn.disabled = false;
+          }
+        });
+        return tr;
+      }
+
+      loadLocations().catch((err) => {
+        const msg = err && err.message ? err.message : err;
+        setStatus('Ошибка: ' + msg, 'error');
+      });
+
+      addBtn.addEventListener('click', async () => {
+        const lat = Number(newLat.value);
+        const lng = Number(newLng.value);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          setStatus('Lat и Lng обязательны', 'error');
+          return;
+        }
+        addBtn.disabled = true;
+        try {
+          const res = await fetch('/admin/api/locations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lat, lng }),
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            const msg = data?.message || data?.error || 'Ошибка добавления';
+            throw new Error(msg);
+          }
+          newLat.value = '';
+          newLng.value = '';
+          await loadLocations();
+        } catch (err) {
+          const msg = err && err.message ? err.message : err;
+          setStatus('Ошибка: ' + msg, 'error');
+        } finally {
+          addBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>`;
+  }
+
   @Get('api/ui')
   async listUi(): Promise<Array<{ id: string; name: string }>> {
     const rows = await this.dataSource.query(
@@ -957,6 +1142,55 @@ export class AdminController {
     );
     if (!rows.length) {
       throw new NotFoundException('UI item not found');
+    }
+    return { ok: true };
+  }
+
+  @Get('api/locations')
+  async listLocations(): Promise<
+    Array<{ id: string; lat: number; lng: number }>
+  > {
+    const rows = await this.dataSource.query(
+      'SELECT id, lat, lng FROM locations ORDER BY id ASC'
+    );
+    return rows.map(
+      (row: { id: string; lat: number | string; lng: number | string }) => ({
+        id: String(row.id),
+        lat: Number(row.lat),
+        lng: Number(row.lng),
+      })
+    );
+  }
+
+  @Post('api/locations')
+  async createLocation(
+    @Body() body: { lat?: number; lng?: number }
+  ): Promise<{ id: string; lat: number; lng: number }> {
+    const lat = Number(body.lat);
+    const lng = Number(body.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new BadRequestException('Lat and lng are required');
+    }
+
+    const rows = await this.dataSource.query(
+      'INSERT INTO locations (lat, lng) VALUES ($1, $2) RETURNING id, lat, lng',
+      [lat, lng]
+    );
+    return {
+      id: String(rows[0].id),
+      lat: Number(rows[0].lat),
+      lng: Number(rows[0].lng),
+    };
+  }
+
+  @Delete('api/locations/:id')
+  async deleteLocation(@Param('id') id: string): Promise<{ ok: true }> {
+    const rows = await this.dataSource.query(
+      'DELETE FROM locations WHERE id = $1 RETURNING id',
+      [id]
+    );
+    if (!rows.length) {
+      throw new NotFoundException('Location not found');
     }
     return { ok: true };
   }
