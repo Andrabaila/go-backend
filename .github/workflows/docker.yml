@@ -46,6 +46,7 @@ jobs:
             docker system prune -f &&
             docker stop go-backend || true &&
             docker rm go-backend || true &&
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/go-backend:latest &&
             docker run -d \
               --env-file /home/ya/.env \
               --name go-backend \
