@@ -400,7 +400,7 @@ export class AdminController {
         font-size: 14px;
         color: #2d3b5e;
       }
-      input, textarea {
+      input, textarea, select {
         width: 100%;
         padding: 10px 12px;
         border: 1px solid #ccd6eb;
@@ -446,7 +446,7 @@ export class AdminController {
     ${theme.html}
     <div class="wrap">
       <h1>Добавить квест</h1>
-      <p>Форма создаёт запись в <code>quests</code> и переводит поля на все языки из <code>languages</code>.</p>
+      <p>Форма создаёт запись в <code>quests</code> и переводит поля через LibreTranslate на доступные языки.</p>
 
       <form id="quest-form">
         <div class="row">
@@ -467,6 +467,21 @@ export class AdminController {
         <label>
           Активен
           <input name="is_active" type="checkbox" checked />
+        </label>
+
+        <label>Язык
+          <select name="language_code" required>
+            <option value="ru" selected>Русский</option>
+            <option value="en">English</option>
+            <option value="pl">Polski</option>
+            <option value="es">Español</option>
+            <option value="de">Deutsch</option>
+            <option value="fr">Français</option>
+            <option value="pt">Português</option>
+            <option value="ja">日本語</option>
+            <option value="uk">Українська</option>
+            <option value="ar">العربية</option>
+          </select>
         </label>
 
         <label>Название
@@ -514,6 +529,7 @@ export class AdminController {
           difficulty: Number(formData.get('difficulty')),
           price: Number(formData.get('price')),
           is_active: formData.get('is_active') === 'on',
+          language_code: String(formData.get('language_code') || '').trim(),
           title: String(formData.get('title') || '').trim(),
           description: String(formData.get('description') || '').trim(),
           district: String(formData.get('district') || '').trim(),
