@@ -67,7 +67,10 @@ export function getDbStatus(dataSource: DataSource): DbStatus {
   };
 }
 
-export function renderDbStatusBar(dataSource: DataSource): {
+export function renderDbStatusBar(
+  dataSource: DataSource,
+  addresses: string[] = []
+): {
   style: string;
   html: string;
 } {
@@ -84,6 +87,12 @@ export function renderDbStatusBar(dataSource: DataSource): {
   ]
     .filter(Boolean)
     .join(' • ');
+  const uniqueAddresses = Array.from(
+    new Set(addresses.map((item) => item.trim()).filter(Boolean))
+  );
+  const addressesHtml = uniqueAddresses.length
+    ? uniqueAddresses.map((addr) => `<a href="${addr}">${addr}</a>`).join(' • ')
+    : 'не определены';
 
   return {
     style: `
@@ -97,6 +106,10 @@ export function renderDbStatusBar(dataSource: DataSource): {
         border-bottom: 1px solid #d9e3f5;
         font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
         font-size: 13px;
+        display: grid;
+        gap: 6px;
+      }
+      .db-row {
         display: flex;
         flex-wrap: wrap;
         gap: 8px 12px;
@@ -112,11 +125,17 @@ export function renderDbStatusBar(dataSource: DataSource): {
       .db-bar.ok .badge { background: #dff5e6; color: #1f6a37; }
       .db-bar.err .badge { background: #ffe3e3; color: #8a2b2b; }
       .db-bar .details { color: #4a5875; }
+      .db-bar .addresses { color: #4a5875; font-size: 12.5px; }
+      .db-bar .addresses a { color: inherit; text-decoration: none; }
+      .db-bar .addresses a:hover { text-decoration: underline; }
     `,
     html: `
       <div class="db-bar ${stateClass}">
-        <span class="badge">DB: ${stateText}</span>
-        <span class="details">${details || 'данные подключения недоступны'}</span>
+        <div class="db-row">
+          <span class="badge">DB: ${stateText}</span>
+          <span class="details">${details || 'данные подключения недоступны'}</span>
+        </div>
+        <div class="db-row addresses">Адреса: ${addressesHtml}</div>
       </div>
     `,
   };

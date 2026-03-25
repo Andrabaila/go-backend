@@ -1,7 +1,27 @@
-import { Controller, Get, Header } from '@nestjs/common';
+import { Controller, Get, Header, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { DataSource } from 'typeorm';
 import { renderDbStatusBar } from './common/db-status.js';
 import { AppService } from './app.service.js';
+
+function getBackendAddresses(req: Request): string[] {
+  const forwarded = req.headers['x-forwarded-proto'];
+  const forwardedProto = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  const protocol =
+    (forwardedProto && forwardedProto.split(',')[0].trim()) ||
+    req.protocol ||
+    'http';
+  const host = req.get('host');
+  const port = String(process.env.PORT ?? (host ? host.split(':')[1] : '3000'));
+  const candidates = [
+    host ? `${protocol}://${host}` : '',
+    `https://localhost:${port}`,
+    `http://localhost:${port}`,
+  ];
+  return Array.from(
+    new Set(candidates.map((item) => item.trim()).filter(Boolean))
+  );
+}
 
 @Controller()
 export class AppController {
@@ -12,8 +32,11 @@ export class AppController {
 
   @Get()
   @Header('Content-Type', 'text/html; charset=utf-8')
-  getHello(): string {
-    const dbStatus = renderDbStatusBar(this.dataSource);
+  getHello(@Req() req: Request): string {
+    const dbStatus = renderDbStatusBar(
+      this.dataSource,
+      getBackendAddresses(req)
+    );
     const greeting = this.appService.getHello();
     return `<!doctype html>
 <html lang="ru">
@@ -51,6 +74,11 @@ export class AppController {
     <div class="wrap">
       <h1>Backend</h1>
       <p>${greeting}</p>
+      <p style="margin-top: 16px;">
+        <a href="/admin" style="color:#2d6cdf; text-decoration:none; font-weight:600;">
+          Перейти в админку
+        </a>
+      </p>
     </div>
   </body>
 </html>`;

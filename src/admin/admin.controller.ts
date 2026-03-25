@@ -9,13 +9,34 @@ import {
   Param,
   Post,
   Put,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { renderDbStatusBar } from '../common/db-status.js';
 import { Language } from '../quests/language.entity.js';
 import { QuestRecord } from '../quests/quest-record.entity.js';
 import { QuestTranslation } from '../quests/quest-translation.entity.js';
+
+function getBackendAddresses(req: Request): string[] {
+  const forwarded = req.headers['x-forwarded-proto'];
+  const forwardedProto = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  const protocol =
+    (forwardedProto && forwardedProto.split(',')[0].trim()) ||
+    req.protocol ||
+    'http';
+  const host = req.get('host');
+  const port = String(process.env.PORT ?? (host ? host.split(':')[1] : '3000'));
+  const candidates = [
+    host ? `${protocol}://${host}` : '',
+    `https://localhost:${port}`,
+    `http://localhost:${port}`,
+  ];
+  return Array.from(
+    new Set(candidates.map((item) => item.trim()).filter(Boolean))
+  );
+}
 
 @Controller('admin')
 export class AdminController {
@@ -29,8 +50,11 @@ export class AdminController {
 
   @Get()
   @Header('Content-Type', 'text/html; charset=utf-8')
-  getAdminHome(): string {
-    const dbStatus = renderDbStatusBar(this.dataSource);
+  getAdminHome(@Req() req: Request): string {
+    const dbStatus = renderDbStatusBar(
+      this.dataSource,
+      getBackendAddresses(req)
+    );
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -992,12 +1016,23 @@ export class AdminController {
             <th>ID</th>
             <th>Lat</th>
             <th>Lng</th>
+            <th>Язык</th>
+            <th>Название</th>
+            <th>Описание</th>
             <th></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
       <div class="actions" style="margin-top: 20px;">
+        <select id="new-lang">
+          <option value="ru" selected>Русский</option>
+          <option value="en">English</option>
+          <option value="pl">Polski</option>
+          <option value="es">Español</option>
+        </select>
+        <input id="new-title" type="text" placeholder="название (ru)" />
+        <input id="new-desc" type="text" placeholder="описание (ru)" />
         <input id="new-lat" type="number" step="0.000001" placeholder="lat" />
         <input id="new-lng" type="number" step="0.000001" placeholder="lng" />
         <button id="add-btn">Добавить</button>
@@ -1011,6 +1046,9 @@ export class AdminController {
       const rowsEl = document.getElementById('rows');
       const statusEl = document.getElementById('status');
       const addBtn = document.getElementById('add-btn');
+      const newLang = document.getElementById('new-lang');
+      const newTitle = document.getElementById('new-title');
+      const newDesc = document.getElementById('new-desc');
       const newLat = document.getElementById('new-lat');
       const newLng = document.getElementById('new-lng');
 
@@ -1038,6 +1076,9 @@ export class AdminController {
           '<td>' + item.id + '</td>' +
           '<td>' + item.lat + '</td>' +
           '<td>' + item.lng + '</td>' +
+          '<td>' + (item.languageCode || '') + '</td>' +
+          '<td>' + (item.title || '') + '</td>' +
+          '<td>' + (item.description || '') + '</td>' +
           '<td><button class="delete">Удалить</button></td>';
 
         const delBtn = tr.querySelector('button.delete');
@@ -1070,8 +1111,19 @@ export class AdminController {
       });
 
       addBtn.addEventListener('click', async () => {
+        const languageCode = String(newLang.value || '').trim();
+        const title = String(newTitle.value || '').trim();
+        const description = String(newDesc.value || '').trim();
         const lat = Number(newLat.value);
         const lng = Number(newLng.value);
+        if (!languageCode) {
+          setStatus('Язык обязателен', 'error');
+          return;
+        }
+        if (!title || !description) {
+          setStatus('Название и описание обязательны', 'error');
+          return;
+        }
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
           setStatus('Lat и Lng обязательны', 'error');
           return;
@@ -1081,13 +1133,15 @@ export class AdminController {
           const res = await fetch('/admin/api/locations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lat, lng }),
+            body: JSON.stringify({ lat, lng, title, description, language_code: languageCode }),
           });
           const data = await res.json().catch(() => null);
           if (!res.ok) {
             const msg = data?.message || data?.error || 'Ошибка добавления';
             throw new Error(msg);
           }
+          newTitle.value = '';
+          newDesc.value = '';
           newLat.value = '';
           newLng.value = '';
           await loadLocations();
@@ -1152,39 +1206,110 @@ export class AdminController {
 
   @Get('api/locations')
   async listLocations(): Promise<
-    Array<{ id: string; lat: number; lng: number }>
+    Array<{
+      id: string;
+      lat: number;
+      lng: number;
+      languageCode: string | null;
+      title: string | null;
+      description: string | null;
+    }>
   > {
     const rows = await this.dataSource.query(
-      'SELECT id, lat, lng FROM locations ORDER BY id ASC'
+      `SELECT l.id, l.lat, l.lng, lt.language_code, lt.title, lt.description
+       FROM locations l
+       LEFT JOIN location_translations lt
+         ON lt.location_id = l.id
+       ORDER BY l.id ASC, lt.language_code ASC`
     );
     return rows.map(
-      (row: { id: string; lat: number | string; lng: number | string }) => ({
+      (row: {
+        id: string;
+        lat: number | string;
+        lng: number | string;
+        language_code: string | null;
+        title: string | null;
+        description: string | null;
+      }) => ({
         id: String(row.id),
         lat: Number(row.lat),
         lng: Number(row.lng),
+        languageCode: row.language_code ?? null,
+        title: row.title ?? null,
+        description: row.description ?? null,
       })
     );
   }
 
   @Post('api/locations')
   async createLocation(
-    @Body() body: { lat?: number; lng?: number }
-  ): Promise<{ id: string; lat: number; lng: number }> {
+    @Body()
+    body: {
+      lat?: number;
+      lng?: number;
+      title?: string;
+      description?: string;
+      language_code?: string;
+    }
+  ): Promise<{
+    id: string;
+    lat: number;
+    lng: number;
+    languageCode: string;
+    title: string | null;
+    description: string | null;
+  }> {
+    const languageCode = String(body.language_code || '')
+      .trim()
+      .toLowerCase();
+    const title = (body.title ?? '').trim();
+    const description = (body.description ?? '').trim();
     const lat = Number(body.lat);
     const lng = Number(body.lng);
+    const allowedLanguages = ['ru', 'en', 'pl', 'es'];
+    if (!allowedLanguages.includes(languageCode)) {
+      throw new BadRequestException('Invalid language code');
+    }
+    if (!title || !description) {
+      throw new BadRequestException('Title and description are required');
+    }
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       throw new BadRequestException('Lat and lng are required');
     }
 
-    const rows = await this.dataSource.query(
-      'INSERT INTO locations (lat, lng) VALUES ($1, $2) RETURNING id, lat, lng',
-      [lat, lng]
-    );
-    return {
-      id: String(rows[0].id),
-      lat: Number(rows[0].lat),
-      lng: Number(rows[0].lng),
-    };
+    try {
+      const result = await this.dataSource.transaction(async (manager) => {
+        const rows = await manager.query(
+          'INSERT INTO locations (lat, lng) VALUES ($1, $2) RETURNING id, lat, lng',
+          [lat, lng]
+        );
+        const locationId = rows[0]?.id;
+        if (!locationId) {
+          throw new Error('Location id not returned');
+        }
+        await manager.query(
+          `INSERT INTO location_translations
+             (id, location_id, language_code, title, description)
+           VALUES (uuid_generate_v4(), $1, $2, $3, $4)`,
+          [locationId, languageCode, title, description]
+        );
+        return {
+          id: String(locationId),
+          lat: Number(rows[0].lat),
+          lng: Number(rows[0].lng),
+          languageCode,
+          title,
+          description,
+        };
+      });
+      return result;
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message?: string }).message)
+          : 'Insert failed';
+      throw new BadRequestException(message);
+    }
   }
 
   @Delete('api/locations/:id')
