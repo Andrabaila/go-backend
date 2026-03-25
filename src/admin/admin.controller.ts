@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { renderDbStatusBar } from '../common/db-status.js';
 import { Language } from '../quests/language.entity.js';
 import { QuestRecord } from '../quests/quest-record.entity.js';
 import { QuestTranslation } from '../quests/quest-translation.entity.js';
@@ -29,6 +30,7 @@ export class AdminController {
   @Get()
   @Header('Content-Type', 'text/html; charset=utf-8')
   getAdminHome(): string {
+    const dbStatus = renderDbStatusBar(this.dataSource);
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -44,6 +46,7 @@ export class AdminController {
         background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
         color: #1f2a44;
       }
+      ${dbStatus.style}
       .wrap {
         max-width: 900px;
         margin: 48px auto;
@@ -81,6 +84,7 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${dbStatus.html}
     <div class="wrap">
       <h1>Админка</h1>
       <p>Быстрые ссылки на управление справочниками.</p>
