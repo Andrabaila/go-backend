@@ -2,6 +2,7 @@ import { Controller, Get, Header, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { DataSource } from 'typeorm';
 import { renderDbStatusBar } from './common/db-status.js';
+import { renderThemeToggle } from './common/theme-toggle.js';
 import { AppService } from './app.service.js';
 
 function getBackendAddresses(req: Request): string[] {
@@ -37,6 +38,7 @@ export class AppController {
       this.dataSource,
       getBackendAddresses(req)
     );
+    const theme = renderThemeToggle();
     const greeting = this.appService.getHello();
     return `<!doctype html>
 <html lang="ru">
@@ -54,6 +56,7 @@ export class AppController {
         color: #1f2a44;
       }
       ${dbStatus.style}
+      ${theme.style}
       .wrap {
         max-width: 860px;
         margin: 48px auto;
@@ -70,6 +73,7 @@ export class AppController {
     </style>
   </head>
   <body>
+    ${theme.html}
     ${dbStatus.html}
     <div class="wrap">
       <h1>Backend</h1>
@@ -80,6 +84,7 @@ export class AppController {
         </a>
       </p>
     </div>
+    ${theme.script}
   </body>
 </html>`;
   }

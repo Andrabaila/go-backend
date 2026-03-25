@@ -15,6 +15,7 @@ import type { Request } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { renderDbStatusBar } from '../common/db-status.js';
+import { renderThemeToggle } from '../common/theme-toggle.js';
 import { Language } from '../quests/language.entity.js';
 import { QuestRecord } from '../quests/quest-record.entity.js';
 import { QuestTranslation } from '../quests/quest-translation.entity.js';
@@ -55,6 +56,7 @@ export class AdminController {
       this.dataSource,
       getBackendAddresses(req)
     );
+    const theme = renderThemeToggle();
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -71,6 +73,7 @@ export class AdminController {
         color: #1f2a44;
       }
       ${dbStatus.style}
+      ${theme.style}
       .wrap {
         max-width: 900px;
         margin: 48px auto;
@@ -108,6 +111,7 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${theme.html}
     ${dbStatus.html}
     <div class="wrap">
       <h1>Админка</h1>
@@ -131,6 +135,7 @@ export class AdminController {
         </a>
       </div>
     </div>
+    ${theme.script}
   </body>
 </html>`;
   }
@@ -138,6 +143,7 @@ export class AdminController {
   @Get('quests')
   @Header('Content-Type', 'text/html; charset=utf-8')
   getQuestsList(): string {
+    const theme = renderThemeToggle();
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -153,6 +159,7 @@ export class AdminController {
         background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
         color: #1f2a44;
       }
+      ${theme.style}
       .wrap {
         max-width: 980px;
         margin: 48px auto;
@@ -203,6 +210,7 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${theme.html}
     <div class="wrap">
       <h1>Квесты</h1>
       <p>Список существующих квестов. Можно удалить и перейти к форме добавления.</p>
@@ -338,6 +346,7 @@ export class AdminController {
   @Get('quests/add')
   @Header('Content-Type', 'text/html; charset=utf-8')
   getQuestsAdmin(): string {
+    const theme = renderThemeToggle();
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -355,6 +364,7 @@ export class AdminController {
         background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
         color: #1f2a44;
       }
+      ${theme.style}
       .wrap {
         max-width: 860px;
         margin: 48px auto;
@@ -432,6 +442,7 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${theme.html}
     <div class="wrap">
       <h1>Добавить квест</h1>
       <p>Форма создаёт запись в <code>quests</code> и переводит поля на все языки из <code>languages</code>.</p>
@@ -531,6 +542,7 @@ export class AdminController {
         }
       });
     </script>
+    ${theme.script}
   </body>
 </html>`;
   }
@@ -538,6 +550,7 @@ export class AdminController {
   @Get('languages')
   @Header('Content-Type', 'text/html; charset=utf-8')
   getLanguagesAdmin(): string {
+    const theme = renderThemeToggle();
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -553,6 +566,7 @@ export class AdminController {
         background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
         color: #1f2a44;
       }
+      ${theme.style}
       .wrap {
         max-width: 900px;
         margin: 48px auto;
@@ -600,6 +614,7 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${theme.html}
     <div class="wrap">
       <h1>Языки</h1>
       <p>Список языков из таблицы <code>languages</code>. Можно менять имя и флаг default.</p>
@@ -761,6 +776,7 @@ export class AdminController {
         }
       });
     </script>
+    ${theme.script}
   </body>
 </html>`;
   }
@@ -768,6 +784,7 @@ export class AdminController {
   @Get('ui')
   @Header('Content-Type', 'text/html; charset=utf-8')
   getUiAdmin(): string {
+    const theme = renderThemeToggle();
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -783,6 +800,7 @@ export class AdminController {
         background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
         color: #1f2a44;
       }
+      ${theme.style}
       .wrap {
         max-width: 900px;
         margin: 48px auto;
@@ -825,6 +843,7 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${theme.html}
     <div class="wrap">
       <h1>UI</h1>
       <p>Список сущностей интерфейса из таблицы <code>ui</code>. Можно добавить и удалить.</p>
@@ -942,6 +961,7 @@ export class AdminController {
         }
       });
     </script>
+    ${theme.script}
   </body>
 </html>`;
   }
@@ -949,6 +969,7 @@ export class AdminController {
   @Get('locations')
   @Header('Content-Type', 'text/html; charset=utf-8')
   getLocationsAdmin(): string {
+    const theme = renderThemeToggle();
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -964,6 +985,7 @@ export class AdminController {
         background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
         color: #1f2a44;
       }
+      ${theme.style}
       .wrap {
         max-width: 900px;
         margin: 48px auto;
@@ -1007,6 +1029,7 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${theme.html}
     <div class="wrap">
       <h1>Locations</h1>
       <p>Список координат из таблицы <code>locations</code>. Можно добавить и удалить.</p>
@@ -1153,6 +1176,7 @@ export class AdminController {
         }
       });
     </script>
+    ${theme.script}
   </body>
 </html>`;
   }
