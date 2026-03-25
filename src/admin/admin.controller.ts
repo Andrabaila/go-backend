@@ -16,6 +16,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { renderDbStatusBar } from '../common/db-status.js';
 import { renderThemeToggle } from '../common/theme-toggle.js';
+import { getLibreLanguages, translateText } from '../common/libretranslate.js';
 import { Language } from '../quests/language.entity.js';
 import { QuestRecord } from '../quests/quest-record.entity.js';
 import { QuestTranslation } from '../quests/quest-translation.entity.js';
@@ -1290,10 +1291,6 @@ export class AdminController {
     const description = (body.description ?? '').trim();
     const lat = Number(body.lat);
     const lng = Number(body.lng);
-    const allowedLanguages = ['ru', 'en', 'pl', 'es'];
-    if (!allowedLanguages.includes(languageCode)) {
-      throw new BadRequestException('Invalid language code');
-    }
     if (!title || !description) {
       throw new BadRequestException('Title and description are required');
     }
@@ -1302,6 +1299,39 @@ export class AdminController {
     }
 
     try {
+      const availableLanguages = await getLibreLanguages();
+      const allowedLanguages = ['en', 'pl', 'ru', 'uk', 'es'];
+      const targetLanguages = availableLanguages.filter((code) =>
+        allowedLanguages.includes(code)
+      );
+      if (!targetLanguages.length) {
+        throw new Error('LibreTranslate returned no allowed languages');
+      }
+      if (!targetLanguages.includes(languageCode)) {
+        throw new Error(`Language ${languageCode} is not supported`);
+      }
+      const translations: Array<{
+        code: string;
+        title: string;
+        description: string;
+      }> = [];
+      for (const code of targetLanguages) {
+        if (code === languageCode) {
+          translations.push({ code, title, description });
+          continue;
+        }
+        const translatedTitle = await translateText(title, languageCode, code);
+        const translatedDescription = await translateText(
+          description,
+          languageCode,
+          code
+        );
+        translations.push({
+          code,
+          title: translatedTitle,
+          description: translatedDescription,
+        });
+      }
       const result = await this.dataSource.transaction(async (manager) => {
         const rows = await manager.query(
           'INSERT INTO locations (lat, lng) VALUES ($1, $2) RETURNING id, lat, lng',
@@ -1311,12 +1341,14 @@ export class AdminController {
         if (!locationId) {
           throw new Error('Location id not returned');
         }
-        await manager.query(
-          `INSERT INTO location_translations
-             (id, location_id, language_code, title, description)
-           VALUES (uuid_generate_v4(), $1, $2, $3, $4)`,
-          [locationId, languageCode, title, description]
-        );
+        for (const item of translations) {
+          await manager.query(
+            `INSERT INTO location_translations
+               (id, location_id, language_code, title, description)
+             VALUES (uuid_generate_v4(), $1, $2, $3, $4)`,
+            [locationId, item.code, item.title, item.description]
+          );
+        }
         return {
           id: String(locationId),
           lat: Number(rows[0].lat),
