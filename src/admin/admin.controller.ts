@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Header,
+  HttpException,
   NotFoundException,
   Param,
   Post,
@@ -1300,21 +1301,26 @@ export class AdminController {
     title: string | null;
     description: string | null;
   }> {
-    const languageCode = String(body.language_code || '')
-      .trim()
-      .toLowerCase();
-    const title = (body.title ?? '').trim();
-    const description = (body.description ?? '').trim();
-    const lat = Number(body.lat);
-    const lng = Number(body.lng);
-    if (!title || !description) {
-      throw new BadRequestException('Title and description are required');
-    }
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      throw new BadRequestException('Lat and lng are required');
-    }
-
     try {
+      if (!body || typeof body !== 'object') {
+        throw new BadRequestException('Request body is required');
+      }
+      const languageCode = String(body.language_code || '')
+        .trim()
+        .toLowerCase();
+      const title = (body.title ?? '').trim();
+      const description = (body.description ?? '').trim();
+      const lat = Number(body.lat);
+      const lng = Number(body.lng);
+      if (!languageCode) {
+        throw new BadRequestException('Language code is required');
+      }
+      if (!title || !description) {
+        throw new BadRequestException('Title and description are required');
+      }
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        throw new BadRequestException('Lat and lng are required');
+      }
       const allowedLanguages = ['en', 'pl', 'ru', 'uk', 'es'];
       let translations: Array<{
         code: string;
@@ -1388,6 +1394,9 @@ export class AdminController {
       });
       return result;
     } catch (err) {
+      if (err instanceof HttpException) {
+        throw err;
+      }
       const message =
         err && typeof err === 'object' && 'message' in err
           ? String((err as { message?: string }).message)
