@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import type { NextFunction, Request, Response } from 'express';
 
 dotenv.config();
 
@@ -58,33 +59,52 @@ async function bootstrap() {
     app = await NestFactory.create(AppModule);
   }
 
-  app.enableCors({
-    origin: (origin, callback) => {
-      const allowedOrigins = (process.env.CLIENT_URLS || '')
-        .split(',')
-        .map((url) => url.trim())
-        .filter(Boolean);
+  const allowedOrigins = new Set(
+    (process.env.CLIENT_URLS || '')
+      .split(',')
+      .map((url) => url.trim())
+      .filter(Boolean)
+  );
 
-      const isLocalhost =
-        typeof origin === 'string' &&
-        (origin.startsWith('http://localhost') ||
-          origin.startsWith('https://localhost'));
-      const isTailnet =
-        typeof origin === 'string' && origin.endsWith('.tail1d4748.ts.net');
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const origin = req.headers.origin;
+    if (!origin) {
+      return next();
+    }
 
-      // Разрешаем, если origin пустой (например, Postman) или находится в списке
-      if (
-        !origin ||
-        allowedOrigins.includes(origin) ||
-        isLocalhost ||
-        isTailnet
-      ) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
+    const isLocalhost =
+      origin.startsWith('http://localhost') ||
+      origin.startsWith('https://localhost');
+    const isTailnet = origin.endsWith('.tail1d4748.ts.net');
+    let isSameHost = false;
+    try {
+      const originHost = new URL(origin).host;
+      const requestHost = req.get('host');
+      isSameHost = Boolean(requestHost && originHost === requestHost);
+    } catch {
+      isSameHost = false;
+    }
+
+    if (allowedOrigins.has(origin) || isLocalhost || isTailnet || isSameHost) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Vary', 'Origin');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header(
+        'Access-Control-Allow-Methods',
+        'GET,HEAD,PUT,PATCH,POST,DELETE'
+      );
+      const reqHeaders = req.headers['access-control-request-headers'];
+      res.header(
+        'Access-Control-Allow-Headers',
+        reqHeaders ? String(reqHeaders) : 'Content-Type, Authorization'
+      );
+      if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
       }
-    },
-    credentials: true,
+      return next();
+    }
+
+    return res.status(403).send('Not allowed by CORS');
   });
 
   app.useGlobalPipes(
