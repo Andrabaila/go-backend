@@ -9,12 +9,36 @@ import {
   Param,
   Post,
   Put,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { renderDbStatusBar } from '../common/db-status.js';
+import { renderThemeToggle } from '../common/theme-toggle.js';
+import { getLibreLanguages, translateText } from '../common/libretranslate.js';
 import { Language } from '../quests/language.entity.js';
 import { QuestRecord } from '../quests/quest-record.entity.js';
 import { QuestTranslation } from '../quests/quest-translation.entity.js';
+
+function getBackendAddresses(req: Request): string[] {
+  const forwarded = req.headers['x-forwarded-proto'];
+  const forwardedProto = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  const protocol =
+    (forwardedProto && forwardedProto.split(',')[0].trim()) ||
+    req.protocol ||
+    'http';
+  const host = req.get('host');
+  const port = String(process.env.PORT ?? (host ? host.split(':')[1] : '3000'));
+  const candidates = [
+    host ? `${protocol}://${host}` : '',
+    `https://localhost:${port}`,
+    `http://localhost:${port}`,
+  ];
+  return Array.from(
+    new Set(candidates.map((item) => item.trim()).filter(Boolean))
+  );
+}
 
 @Controller('admin')
 export class AdminController {
@@ -28,7 +52,12 @@ export class AdminController {
 
   @Get()
   @Header('Content-Type', 'text/html; charset=utf-8')
-  getAdminHome(): string {
+  getAdminHome(@Req() req: Request): string {
+    const dbStatus = renderDbStatusBar(
+      this.dataSource,
+      getBackendAddresses(req)
+    );
+    const theme = renderThemeToggle();
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -44,6 +73,8 @@ export class AdminController {
         background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
         color: #1f2a44;
       }
+      ${dbStatus.style}
+      ${theme.style}
       .wrap {
         max-width: 900px;
         margin: 48px auto;
@@ -81,6 +112,8 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${theme.html}
+    ${dbStatus.html}
     <div class="wrap">
       <h1>Админка</h1>
       <p>Быстрые ссылки на управление справочниками.</p>
@@ -103,6 +136,7 @@ export class AdminController {
         </a>
       </div>
     </div>
+    ${theme.script}
   </body>
 </html>`;
   }
@@ -110,6 +144,7 @@ export class AdminController {
   @Get('quests')
   @Header('Content-Type', 'text/html; charset=utf-8')
   getQuestsList(): string {
+    const theme = renderThemeToggle();
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -125,6 +160,7 @@ export class AdminController {
         background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
         color: #1f2a44;
       }
+      ${theme.style}
       .wrap {
         max-width: 980px;
         margin: 48px auto;
@@ -175,6 +211,7 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${theme.html}
     <div class="wrap">
       <h1>Квесты</h1>
       <p>Список существующих квестов. Можно удалить и перейти к форме добавления.</p>
@@ -310,6 +347,7 @@ export class AdminController {
   @Get('quests/add')
   @Header('Content-Type', 'text/html; charset=utf-8')
   getQuestsAdmin(): string {
+    const theme = renderThemeToggle();
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -327,6 +365,7 @@ export class AdminController {
         background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
         color: #1f2a44;
       }
+      ${theme.style}
       .wrap {
         max-width: 860px;
         margin: 48px auto;
@@ -361,7 +400,7 @@ export class AdminController {
         font-size: 14px;
         color: #2d3b5e;
       }
-      input, textarea {
+      input, textarea, select {
         width: 100%;
         padding: 10px 12px;
         border: 1px solid #ccd6eb;
@@ -404,9 +443,10 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${theme.html}
     <div class="wrap">
       <h1>Добавить квест</h1>
-      <p>Форма создаёт запись в <code>quests</code> и переводит поля на все языки из <code>languages</code>.</p>
+      <p>Форма создаёт запись в <code>quests</code> и переводит поля через LibreTranslate на доступные языки.</p>
 
       <form id="quest-form">
         <div class="row">
@@ -427,6 +467,21 @@ export class AdminController {
         <label>
           Активен
           <input name="is_active" type="checkbox" checked />
+        </label>
+
+        <label>Язык
+          <select name="language_code" required>
+            <option value="ru" selected>Русский</option>
+            <option value="en">English</option>
+            <option value="pl">Polski</option>
+            <option value="es">Español</option>
+            <option value="de">Deutsch</option>
+            <option value="fr">Français</option>
+            <option value="pt">Português</option>
+            <option value="ja">日本語</option>
+            <option value="uk">Українська</option>
+            <option value="ar">العربية</option>
+          </select>
         </label>
 
         <label>Название
@@ -474,6 +529,7 @@ export class AdminController {
           difficulty: Number(formData.get('difficulty')),
           price: Number(formData.get('price')),
           is_active: formData.get('is_active') === 'on',
+          language_code: String(formData.get('language_code') || '').trim(),
           title: String(formData.get('title') || '').trim(),
           description: String(formData.get('description') || '').trim(),
           district: String(formData.get('district') || '').trim(),
@@ -503,6 +559,7 @@ export class AdminController {
         }
       });
     </script>
+    ${theme.script}
   </body>
 </html>`;
   }
@@ -510,6 +567,7 @@ export class AdminController {
   @Get('languages')
   @Header('Content-Type', 'text/html; charset=utf-8')
   getLanguagesAdmin(): string {
+    const theme = renderThemeToggle();
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -525,6 +583,7 @@ export class AdminController {
         background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
         color: #1f2a44;
       }
+      ${theme.style}
       .wrap {
         max-width: 900px;
         margin: 48px auto;
@@ -572,6 +631,7 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${theme.html}
     <div class="wrap">
       <h1>Языки</h1>
       <p>Список языков из таблицы <code>languages</code>. Можно менять имя и флаг default.</p>
@@ -733,6 +793,7 @@ export class AdminController {
         }
       });
     </script>
+    ${theme.script}
   </body>
 </html>`;
   }
@@ -740,6 +801,7 @@ export class AdminController {
   @Get('ui')
   @Header('Content-Type', 'text/html; charset=utf-8')
   getUiAdmin(): string {
+    const theme = renderThemeToggle();
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -755,6 +817,7 @@ export class AdminController {
         background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
         color: #1f2a44;
       }
+      ${theme.style}
       .wrap {
         max-width: 900px;
         margin: 48px auto;
@@ -797,6 +860,7 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${theme.html}
     <div class="wrap">
       <h1>UI</h1>
       <p>Список сущностей интерфейса из таблицы <code>ui</code>. Можно добавить и удалить.</p>
@@ -914,6 +978,7 @@ export class AdminController {
         }
       });
     </script>
+    ${theme.script}
   </body>
 </html>`;
   }
@@ -921,6 +986,7 @@ export class AdminController {
   @Get('locations')
   @Header('Content-Type', 'text/html; charset=utf-8')
   getLocationsAdmin(): string {
+    const theme = renderThemeToggle();
     return `<!doctype html>
 <html lang="ru">
   <head>
@@ -936,6 +1002,7 @@ export class AdminController {
         background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
         color: #1f2a44;
       }
+      ${theme.style}
       .wrap {
         max-width: 900px;
         margin: 48px auto;
@@ -979,6 +1046,7 @@ export class AdminController {
     </style>
   </head>
   <body>
+    ${theme.html}
     <div class="wrap">
       <h1>Locations</h1>
       <p>Список координат из таблицы <code>locations</code>. Можно добавить и удалить.</p>
@@ -988,12 +1056,23 @@ export class AdminController {
             <th>ID</th>
             <th>Lat</th>
             <th>Lng</th>
+            <th>Язык</th>
+            <th>Название</th>
+            <th>Описание</th>
             <th></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
       <div class="actions" style="margin-top: 20px;">
+        <select id="new-lang">
+          <option value="ru" selected>Русский</option>
+          <option value="en">English</option>
+          <option value="pl">Polski</option>
+          <option value="es">Español</option>
+        </select>
+        <input id="new-title" type="text" placeholder="название (ru)" />
+        <input id="new-desc" type="text" placeholder="описание (ru)" />
         <input id="new-lat" type="number" step="0.000001" placeholder="lat" />
         <input id="new-lng" type="number" step="0.000001" placeholder="lng" />
         <button id="add-btn">Добавить</button>
@@ -1007,6 +1086,9 @@ export class AdminController {
       const rowsEl = document.getElementById('rows');
       const statusEl = document.getElementById('status');
       const addBtn = document.getElementById('add-btn');
+      const newLang = document.getElementById('new-lang');
+      const newTitle = document.getElementById('new-title');
+      const newDesc = document.getElementById('new-desc');
       const newLat = document.getElementById('new-lat');
       const newLng = document.getElementById('new-lng');
 
@@ -1034,6 +1116,9 @@ export class AdminController {
           '<td>' + item.id + '</td>' +
           '<td>' + item.lat + '</td>' +
           '<td>' + item.lng + '</td>' +
+          '<td>' + (item.languageCode || '') + '</td>' +
+          '<td>' + (item.title || '') + '</td>' +
+          '<td>' + (item.description || '') + '</td>' +
           '<td><button class="delete">Удалить</button></td>';
 
         const delBtn = tr.querySelector('button.delete');
@@ -1066,8 +1151,19 @@ export class AdminController {
       });
 
       addBtn.addEventListener('click', async () => {
+        const languageCode = String(newLang.value || '').trim();
+        const title = String(newTitle.value || '').trim();
+        const description = String(newDesc.value || '').trim();
         const lat = Number(newLat.value);
         const lng = Number(newLng.value);
+        if (!languageCode) {
+          setStatus('Язык обязателен', 'error');
+          return;
+        }
+        if (!title || !description) {
+          setStatus('Название и описание обязательны', 'error');
+          return;
+        }
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
           setStatus('Lat и Lng обязательны', 'error');
           return;
@@ -1077,13 +1173,15 @@ export class AdminController {
           const res = await fetch('/admin/api/locations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lat, lng }),
+            body: JSON.stringify({ lat, lng, title, description, language_code: languageCode }),
           });
           const data = await res.json().catch(() => null);
           if (!res.ok) {
             const msg = data?.message || data?.error || 'Ошибка добавления';
             throw new Error(msg);
           }
+          newTitle.value = '';
+          newDesc.value = '';
           newLat.value = '';
           newLng.value = '';
           await loadLocations();
@@ -1095,6 +1193,7 @@ export class AdminController {
         }
       });
     </script>
+    ${theme.script}
   </body>
 </html>`;
   }
@@ -1148,39 +1247,153 @@ export class AdminController {
 
   @Get('api/locations')
   async listLocations(): Promise<
-    Array<{ id: string; lat: number; lng: number }>
+    Array<{
+      id: string;
+      lat: number;
+      lng: number;
+      languageCode: string | null;
+      title: string | null;
+      description: string | null;
+    }>
   > {
     const rows = await this.dataSource.query(
-      'SELECT id, lat, lng FROM locations ORDER BY id ASC'
+      `SELECT l.id, l.lat, l.lng, lt.language_code, lt.title, lt.description
+       FROM locations l
+       LEFT JOIN location_translations lt
+         ON lt.location_id = l.id
+       ORDER BY l.id ASC, lt.language_code ASC`
     );
     return rows.map(
-      (row: { id: string; lat: number | string; lng: number | string }) => ({
+      (row: {
+        id: string;
+        lat: number | string;
+        lng: number | string;
+        language_code: string | null;
+        title: string | null;
+        description: string | null;
+      }) => ({
         id: String(row.id),
         lat: Number(row.lat),
         lng: Number(row.lng),
+        languageCode: row.language_code ?? null,
+        title: row.title ?? null,
+        description: row.description ?? null,
       })
     );
   }
 
   @Post('api/locations')
   async createLocation(
-    @Body() body: { lat?: number; lng?: number }
-  ): Promise<{ id: string; lat: number; lng: number }> {
+    @Body()
+    body: {
+      lat?: number;
+      lng?: number;
+      title?: string;
+      description?: string;
+      language_code?: string;
+    }
+  ): Promise<{
+    id: string;
+    lat: number;
+    lng: number;
+    languageCode: string;
+    title: string | null;
+    description: string | null;
+  }> {
+    const languageCode = String(body.language_code || '')
+      .trim()
+      .toLowerCase();
+    const title = (body.title ?? '').trim();
+    const description = (body.description ?? '').trim();
     const lat = Number(body.lat);
     const lng = Number(body.lng);
+    if (!title || !description) {
+      throw new BadRequestException('Title and description are required');
+    }
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       throw new BadRequestException('Lat and lng are required');
     }
 
-    const rows = await this.dataSource.query(
-      'INSERT INTO locations (lat, lng) VALUES ($1, $2) RETURNING id, lat, lng',
-      [lat, lng]
-    );
-    return {
-      id: String(rows[0].id),
-      lat: Number(rows[0].lat),
-      lng: Number(rows[0].lng),
-    };
+    try {
+      const allowedLanguages = ['en', 'pl', 'ru', 'uk', 'es'];
+      let translations: Array<{
+        code: string;
+        title: string;
+        description: string;
+      }> = [];
+      try {
+        const availableLanguages = await getLibreLanguages();
+        const targetLanguages = availableLanguages.filter((code) =>
+          allowedLanguages.includes(code)
+        );
+        if (!targetLanguages.length) {
+          throw new Error('LibreTranslate returned no allowed languages');
+        }
+        if (!targetLanguages.includes(languageCode)) {
+          throw new Error(`Language ${languageCode} is not supported`);
+        }
+        for (const code of targetLanguages) {
+          if (code === languageCode) {
+            translations.push({ code, title, description });
+            continue;
+          }
+          const translatedTitle = await translateText(
+            title,
+            languageCode,
+            code
+          );
+          const translatedDescription = await translateText(
+            description,
+            languageCode,
+            code
+          );
+          translations.push({
+            code,
+            title: translatedTitle,
+            description: translatedDescription,
+          });
+        }
+      } catch (err) {
+        console.warn(
+          '[LibreTranslate] Location translation failed, saving source only:',
+          err
+        );
+        translations = [{ code: languageCode, title, description }];
+      }
+      const result = await this.dataSource.transaction(async (manager) => {
+        const rows = await manager.query(
+          'INSERT INTO locations (lat, lng) VALUES ($1, $2) RETURNING id, lat, lng',
+          [lat, lng]
+        );
+        const locationId = rows[0]?.id;
+        if (!locationId) {
+          throw new Error('Location id not returned');
+        }
+        for (const item of translations) {
+          await manager.query(
+            `INSERT INTO location_translations
+               (id, location_id, language_code, title, description)
+             VALUES (uuid_generate_v4(), $1, $2, $3, $4)`,
+            [locationId, item.code, item.title, item.description]
+          );
+        }
+        return {
+          id: String(locationId),
+          lat: Number(rows[0].lat),
+          lng: Number(rows[0].lng),
+          languageCode,
+          title,
+          description,
+        };
+      });
+      return result;
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message?: string }).message)
+          : 'Insert failed';
+      throw new BadRequestException(message);
+    }
   }
 
   @Delete('api/locations/:id')

@@ -4,7 +4,7 @@ import { DataSource, Repository } from 'typeorm';
 import { Quest } from './quest.entity.js';
 import { QuestRecord } from './quest-record.entity.js';
 import { QuestTranslation } from './quest-translation.entity.js';
-import { Language } from './language.entity.js';
+import { getLibreLanguages, translateText } from '../common/libretranslate.js';
 
 export interface CreateQuestInput {
   duration: number;
@@ -16,20 +16,14 @@ export interface CreateQuestInput {
   description: string;
   district: string;
   city: string;
+  language_code?: string;
 }
-
-type QuestTranslationInput = Pick<
-  CreateQuestInput,
-  'title' | 'description' | 'district' | 'city'
->;
 
 @Injectable()
 export class QuestsService {
   constructor(
     @InjectRepository(Quest)
     private readonly questRepo: Repository<Quest>,
-    @InjectRepository(Language)
-    private readonly languageRepo: Repository<Language>,
     private readonly dataSource: DataSource
   ) {}
 
@@ -93,24 +87,9 @@ export class QuestsService {
   }
 
   async createQuest(input: CreateQuestInput): Promise<QuestRecord> {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('Missing OPENAI_API_KEY environment variable');
-    }
-
-    const languages = await this.languageRepo.find({
-      order: { isDefault: 'DESC', code: 'ASC' },
-    });
-
-    if (languages.length === 0) {
-      throw new Error('No languages found in languages table');
-    }
-
-    const defaultLanguage =
-      languages.find((lang) => lang.isDefault) ?? languages[0];
-    const otherLanguages = languages.filter(
-      (lang) => lang.code !== defaultLanguage.code
-    );
+    const languageCode = String(input.language_code || 'ru')
+      .trim()
+      .toLowerCase();
 
     return this.dataSource.transaction(async (manager) => {
       const quest = manager.create(QuestRecord, {
@@ -124,152 +103,75 @@ export class QuestsService {
       const savedQuest = await manager.save(quest);
 
       const translations: QuestTranslation[] = [];
-      translations.push(
-        manager.create(QuestTranslation, {
-          questId: savedQuest.id,
-          languageCode: defaultLanguage.code,
-          title: input.title,
-          description: input.description,
-          district: input.district,
-          city: input.city,
-        })
-      );
+      const allowedLanguages = ['en', 'es', 'pl', 'ru', 'uk'];
+      try {
+        const availableLanguages = await getLibreLanguages();
+        const targetLanguages = availableLanguages.filter((code) =>
+          allowedLanguages.includes(code)
+        );
+        if (!targetLanguages.length) {
+          throw new Error('LibreTranslate returned no allowed languages');
+        }
+        if (!targetLanguages.includes(languageCode)) {
+          throw new Error(`Language ${languageCode} is not supported`);
+        }
 
-      if (otherLanguages.length > 0) {
-        const translated = await this.translateQuestFields(
-          {
+        for (const code of targetLanguages) {
+          if (code === languageCode) {
+            translations.push(
+              manager.create(QuestTranslation, {
+                questId: savedQuest.id,
+                languageCode: code,
+                title: input.title,
+                description: input.description,
+                district: input.district,
+                city: input.city,
+              })
+            );
+            continue;
+          }
+          const title = await translateText(input.title, languageCode, code);
+          const description = await translateText(
+            input.description,
+            languageCode,
+            code
+          );
+          const district = await translateText(
+            input.district,
+            languageCode,
+            code
+          );
+          const city = await translateText(input.city, languageCode, code);
+          translations.push(
+            manager.create(QuestTranslation, {
+              questId: savedQuest.id,
+              languageCode: code,
+              title,
+              description,
+              district,
+              city,
+            })
+          );
+        }
+      } catch (err) {
+        console.warn(
+          '[LibreTranslate] Quest translation failed, saving source only:',
+          err
+        );
+        translations.push(
+          manager.create(QuestTranslation, {
+            questId: savedQuest.id,
+            languageCode,
             title: input.title,
             description: input.description,
             district: input.district,
             city: input.city,
-          },
-          otherLanguages,
-          apiKey
+          })
         );
-
-        for (const lang of otherLanguages) {
-          const entry = translated[lang.code];
-          if (!entry) {
-            throw new Error(
-              `Missing translation for language ${lang.code} (${lang.name})`
-            );
-          }
-          translations.push(
-            manager.create(QuestTranslation, {
-              questId: savedQuest.id,
-              languageCode: lang.code,
-              title: entry.title,
-              description: entry.description,
-              district: entry.district,
-              city: entry.city,
-            })
-          );
-        }
       }
 
       await manager.save(QuestTranslation, translations);
       return savedQuest;
     });
-  }
-
-  private async translateQuestFields(
-    source: QuestTranslationInput,
-    languages: Language[],
-    apiKey: string
-  ): Promise<Record<string, QuestTranslationInput>> {
-    const model = process.env.OPENAI_MODEL ?? 'gpt-5-mini-2025-08-07';
-    const languageList = languages
-      .map((lang) => `${lang.code} (${lang.name})`)
-      .join(', ');
-
-    const prompt = [
-      'Translate the quest fields into each target language.',
-      'Detect the source language automatically.',
-      'Return ONLY valid JSON with this shape:',
-      '{ "translations": { "lang_code": { "title": "...", "description": "...", "district": "...", "city": "..." } } }',
-      'Keep meaning accurate and natural; keep proper names if appropriate.',
-      `Target languages: ${languageList}.`,
-      'Fields to translate:',
-      `title: ${source.title}`,
-      `description: ${source.description}`,
-      `district: ${source.district}`,
-      `city: ${source.city}`,
-    ].join('\\n');
-
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        input: prompt,
-        temperature: 0.2,
-      }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      const message =
-        typeof data?.error?.message === 'string'
-          ? data.error.message
-          : 'OpenAI request failed';
-      throw new Error(message);
-    }
-
-    const outputText = this.extractOutputText(data);
-    const parsed = this.parseTranslations(outputText);
-    return parsed;
-  }
-
-  private extractOutputText(response: unknown): string {
-    const output = (response as { output?: unknown[] })?.output;
-    if (!Array.isArray(output)) {
-      return '';
-    }
-
-    const chunks: string[] = [];
-    for (const item of output) {
-      const content = (item as { content?: unknown[] })?.content;
-      if (!Array.isArray(content)) {
-        continue;
-      }
-      for (const part of content) {
-        if (part && (part as { type?: string }).type === 'output_text') {
-          const text = (part as { text?: string }).text;
-          if (text) {
-            chunks.push(text);
-          }
-        }
-      }
-    }
-
-    return chunks.join('').trim();
-  }
-
-  private parseTranslations(
-    raw: string
-  ): Record<string, QuestTranslationInput> {
-    const text = raw.trim();
-    if (!text) {
-      throw new Error('Empty translation response');
-    }
-
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}');
-    if (jsonStart === -1 || jsonEnd === -1) {
-      throw new Error('Translation response is not valid JSON');
-    }
-
-    const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1)) as {
-      translations?: Record<string, QuestTranslationInput>;
-    };
-
-    if (!parsed.translations || typeof parsed.translations !== 'object') {
-      throw new Error('Translation response missing translations object');
-    }
-
-    return parsed.translations;
   }
 }
