@@ -1315,38 +1315,50 @@ export class AdminController {
     }
 
     try {
-      const availableLanguages = await getLibreLanguages();
       const allowedLanguages = ['en', 'pl', 'ru', 'uk', 'es'];
-      const targetLanguages = availableLanguages.filter((code) =>
-        allowedLanguages.includes(code)
-      );
-      if (!targetLanguages.length) {
-        throw new Error('LibreTranslate returned no allowed languages');
-      }
-      if (!targetLanguages.includes(languageCode)) {
-        throw new Error(`Language ${languageCode} is not supported`);
-      }
-      const translations: Array<{
+      let translations: Array<{
         code: string;
         title: string;
         description: string;
       }> = [];
-      for (const code of targetLanguages) {
-        if (code === languageCode) {
-          translations.push({ code, title, description });
-          continue;
-        }
-        const translatedTitle = await translateText(title, languageCode, code);
-        const translatedDescription = await translateText(
-          description,
-          languageCode,
-          code
+      try {
+        const availableLanguages = await getLibreLanguages();
+        const targetLanguages = availableLanguages.filter((code) =>
+          allowedLanguages.includes(code)
         );
-        translations.push({
-          code,
-          title: translatedTitle,
-          description: translatedDescription,
-        });
+        if (!targetLanguages.length) {
+          throw new Error('LibreTranslate returned no allowed languages');
+        }
+        if (!targetLanguages.includes(languageCode)) {
+          throw new Error(`Language ${languageCode} is not supported`);
+        }
+        for (const code of targetLanguages) {
+          if (code === languageCode) {
+            translations.push({ code, title, description });
+            continue;
+          }
+          const translatedTitle = await translateText(
+            title,
+            languageCode,
+            code
+          );
+          const translatedDescription = await translateText(
+            description,
+            languageCode,
+            code
+          );
+          translations.push({
+            code,
+            title: translatedTitle,
+            description: translatedDescription,
+          });
+        }
+      } catch (err) {
+        console.warn(
+          '[LibreTranslate] Location translation failed, saving source only:',
+          err
+        );
+        translations = [{ code: languageCode, title, description }];
       }
       const result = await this.dataSource.transaction(async (manager) => {
         const rows = await manager.query(

@@ -102,47 +102,70 @@ export class QuestsService {
 
       const savedQuest = await manager.save(quest);
 
-      const availableLanguages = await getLibreLanguages();
-      const allowedLanguages = ['en', 'es', 'pl', 'ru', 'uk'];
-      const targetLanguages = availableLanguages.filter((code) =>
-        allowedLanguages.includes(code)
-      );
-      if (!targetLanguages.length) {
-        throw new Error('LibreTranslate returned no allowed languages');
-      }
-      if (!targetLanguages.includes(languageCode)) {
-        throw new Error(`Language ${languageCode} is not supported`);
-      }
-
       const translations: QuestTranslation[] = [];
-      for (const code of targetLanguages) {
-        if (code === languageCode) {
+      const allowedLanguages = ['en', 'es', 'pl', 'ru', 'uk'];
+      try {
+        const availableLanguages = await getLibreLanguages();
+        const targetLanguages = availableLanguages.filter((code) =>
+          allowedLanguages.includes(code)
+        );
+        if (!targetLanguages.length) {
+          throw new Error('LibreTranslate returned no allowed languages');
+        }
+        if (!targetLanguages.includes(languageCode)) {
+          throw new Error(`Language ${languageCode} is not supported`);
+        }
+
+        for (const code of targetLanguages) {
+          if (code === languageCode) {
+            translations.push(
+              manager.create(QuestTranslation, {
+                questId: savedQuest.id,
+                languageCode: code,
+                title: input.title,
+                description: input.description,
+                district: input.district,
+                city: input.city,
+              })
+            );
+            continue;
+          }
+          const title = await translateText(input.title, languageCode, code);
+          const description = await translateText(
+            input.description,
+            languageCode,
+            code
+          );
+          const district = await translateText(
+            input.district,
+            languageCode,
+            code
+          );
+          const city = await translateText(input.city, languageCode, code);
           translations.push(
             manager.create(QuestTranslation, {
               questId: savedQuest.id,
               languageCode: code,
-              title: input.title,
-              description: input.description,
-              district: input.district,
-              city: input.city,
+              title,
+              description,
+              district,
+              city,
             })
           );
-          continue;
         }
-        const [title, description, district, city] = await Promise.all([
-          translateText(input.title, languageCode, code),
-          translateText(input.description, languageCode, code),
-          translateText(input.district, languageCode, code),
-          translateText(input.city, languageCode, code),
-        ]);
+      } catch (err) {
+        console.warn(
+          '[LibreTranslate] Quest translation failed, saving source only:',
+          err
+        );
         translations.push(
           manager.create(QuestTranslation, {
             questId: savedQuest.id,
-            languageCode: code,
-            title,
-            description,
-            district,
-            city,
+            languageCode,
+            title: input.title,
+            description: input.description,
+            district: input.district,
+            city: input.city,
           })
         );
       }

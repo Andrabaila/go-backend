@@ -128,6 +128,52 @@ export function renderDbStatusBar(
       .db-bar .addresses { color: #4a5875; font-size: 12.5px; }
       .db-bar .addresses a { color: inherit; text-decoration: none; }
       .db-bar .addresses a:hover { text-decoration: underline; }
+
+      :root[data-theme="dark"] .db-bar {
+        background: #0b1220;
+        color: #e2e8f0;
+        border-bottom-color: #1f2a44;
+      }
+      :root[data-theme="dark"] .db-bar .badge {
+        background: #1b2437;
+        color: #cbd5f5;
+      }
+      :root[data-theme="dark"] .db-bar.ok .badge {
+        background: #163828;
+        color: #bff1d0;
+      }
+      :root[data-theme="dark"] .db-bar.err .badge {
+        background: #3b1f24;
+        color: #f8c1c1;
+      }
+      :root[data-theme="dark"] .db-bar .details,
+      :root[data-theme="dark"] .db-bar .addresses {
+        color: #b6c2d9;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) .db-bar {
+          background: #0b1220;
+          color: #e2e8f0;
+          border-bottom-color: #1f2a44;
+        }
+        :root:not([data-theme]) .db-bar .badge {
+          background: #1b2437;
+          color: #cbd5f5;
+        }
+        :root:not([data-theme]) .db-bar.ok .badge {
+          background: #163828;
+          color: #bff1d0;
+        }
+        :root:not([data-theme]) .db-bar.err .badge {
+          background: #3b1f24;
+          color: #f8c1c1;
+        }
+        :root:not([data-theme]) .db-bar .details,
+        :root:not([data-theme]) .db-bar .addresses {
+          color: #b6c2d9;
+        }
+      }
     `,
     html: `
       <div class="db-bar ${stateClass}">
