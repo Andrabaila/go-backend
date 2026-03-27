@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { randomUUID } from 'crypto';
 import { Quest } from './quest.entity.js';
 import { QuestRecord } from './quest-record.entity.js';
 import { QuestTranslation } from './quest-translation.entity.js';
@@ -103,6 +104,18 @@ export class QuestsService {
       const savedQuest = await manager.save(quest);
 
       const translations: QuestTranslation[] = [];
+      const makeTranslation = (data: {
+        questId: string;
+        languageCode: string;
+        title: string;
+        description: string;
+        district: string;
+        city: string;
+      }) =>
+        manager.create(QuestTranslation, {
+          id: randomUUID(),
+          ...data,
+        });
       const allowedLanguages = ['en', 'es', 'pl', 'ru', 'uk'];
       try {
         const availableLanguages = await getLibreLanguages();
@@ -119,7 +132,7 @@ export class QuestsService {
         for (const code of targetLanguages) {
           if (code === languageCode) {
             translations.push(
-              manager.create(QuestTranslation, {
+              makeTranslation({
                 questId: savedQuest.id,
                 languageCode: code,
                 title: input.title,
@@ -143,7 +156,7 @@ export class QuestsService {
           );
           const city = await translateText(input.city, languageCode, code);
           translations.push(
-            manager.create(QuestTranslation, {
+            makeTranslation({
               questId: savedQuest.id,
               languageCode: code,
               title,
@@ -159,7 +172,7 @@ export class QuestsService {
           err
         );
         translations.push(
-          manager.create(QuestTranslation, {
+          makeTranslation({
             questId: savedQuest.id,
             languageCode,
             title: input.title,
