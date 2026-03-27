@@ -6,7 +6,7 @@ type LibreTranslateConfig = {
 };
 
 const DEFAULT_BASE_URL =
-  process.env.LIBRETRANSLATE_URL ?? 'http://100.68.40.69:5000';
+  process.env.LIBRETRANSLATE_URL ?? 'http://100.120.172.29:5000';
 const DEFAULT_TIMEOUT_MS = Number(
   process.env.LIBRETRANSLATE_TIMEOUT_MS ?? 90000
 );
