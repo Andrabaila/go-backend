@@ -117,32 +117,55 @@ export class QuestsService {
           ...data,
         });
       const allowedLanguages = ['en', 'es', 'pl', 'ru', 'uk'];
+      let targetLanguages = allowedLanguages.slice();
+
       try {
         const availableLanguages = await getLibreLanguages();
-        const targetLanguages = availableLanguages.filter((code) =>
+        targetLanguages = availableLanguages.filter((code) =>
           allowedLanguages.includes(code)
         );
         if (!targetLanguages.length) {
           throw new Error('LibreTranslate returned no allowed languages');
         }
-        if (!targetLanguages.includes(languageCode)) {
-          throw new Error(`Language ${languageCode} is not supported`);
+      } catch (err) {
+        console.warn(
+          '[LibreTranslate] Quest translation failed, saving source only:',
+          err
+        );
+        translations.push(
+          makeTranslation({
+            questId: savedQuest.id,
+            languageCode,
+            title: input.title,
+            description: input.description,
+            district: input.district,
+            city: input.city,
+          })
+        );
+        await manager.save(QuestTranslation, translations);
+        return savedQuest;
+      }
+
+      if (!targetLanguages.includes(languageCode)) {
+        targetLanguages.push(languageCode);
+      }
+
+      for (const code of targetLanguages) {
+        if (code === languageCode) {
+          translations.push(
+            makeTranslation({
+              questId: savedQuest.id,
+              languageCode: code,
+              title: input.title,
+              description: input.description,
+              district: input.district,
+              city: input.city,
+            })
+          );
+          continue;
         }
 
-        for (const code of targetLanguages) {
-          if (code === languageCode) {
-            translations.push(
-              makeTranslation({
-                questId: savedQuest.id,
-                languageCode: code,
-                title: input.title,
-                description: input.description,
-                district: input.district,
-                city: input.city,
-              })
-            );
-            continue;
-          }
+        try {
           const title = await translateText(input.title, languageCode, code);
           const description = await translateText(
             input.description,
@@ -165,22 +188,12 @@ export class QuestsService {
               city,
             })
           );
+        } catch (err) {
+          console.warn(
+            `[LibreTranslate] Failed to translate to ${code}, skipping:`,
+            err
+          );
         }
-      } catch (err) {
-        console.warn(
-          '[LibreTranslate] Quest translation failed, saving source only:',
-          err
-        );
-        translations.push(
-          makeTranslation({
-            questId: savedQuest.id,
-            languageCode,
-            title: input.title,
-            description: input.description,
-            district: input.district,
-            city: input.city,
-          })
-        );
       }
 
       await manager.save(QuestTranslation, translations);
