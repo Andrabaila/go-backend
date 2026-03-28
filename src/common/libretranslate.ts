@@ -5,13 +5,15 @@ type LibreTranslateConfig = {
   timeoutMs: number;
 };
 
-const DEFAULT_BASE_URL =
-  process.env.LIBRETRANSLATE_URL ?? 'http://100.120.172.29:5000';
+const DEFAULT_BASE_URL = process.env.LIBRETRANSLATE_URL;
 const DEFAULT_TIMEOUT_MS = Number(
   process.env.LIBRETRANSLATE_TIMEOUT_MS ?? 90000
 );
 
 function getConfig(): LibreTranslateConfig {
+  if (!DEFAULT_BASE_URL) {
+    throw new Error('LIBRETRANSLATE_URL is not set');
+  }
   return {
     baseUrl: DEFAULT_BASE_URL.replace(/\/$/, ''),
     timeoutMs:

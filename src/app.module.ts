@@ -22,14 +22,7 @@ import { Quest } from './quests/quest.entity.js';
 import { QuestRecord } from './quests/quest-record.entity.js';
 import { QuestTranslation } from './quests/quest-translation.entity.js';
 import { Language } from './quests/language.entity.js';
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
+import { requireEnv } from './common/env.js';
 
 function getDatabaseHost(): string {
   return (
