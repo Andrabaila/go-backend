@@ -7,6 +7,7 @@ import {
   Header,
   HttpException,
   NotFoundException,
+  Query,
   Param,
   Post,
   Put,
@@ -204,11 +205,48 @@ export class AdminController {
         text-decoration: none;
         display: inline-block;
       }
+      button.secondary {
+        background: #e8eefc;
+        color: #2d3b5e;
+      }
       button.delete { background: #d9534f; }
       button:disabled { background: #9db7ea; cursor: not-allowed; }
       .status { padding: 10px; border-radius: 10px; background: #f1f5ff; color: #2d3b5e; }
       .status.error { background: #fff1f1; color: #8a2b2b; }
       .status.success { background: #eefaf1; color: #1f6a37; }
+      .lang {
+        display: grid;
+        gap: 4px;
+        font-size: 12px;
+        color: #6b7a99;
+      }
+      .lang select {
+        min-width: 160px;
+        padding: 8px 10px;
+        border: 1px solid #ccd6eb;
+        border-radius: 8px;
+        background: #f9fbff;
+        color: #1f2a44;
+        font-size: 14px;
+      }
+      .details-row { display: none; background: #f9fbff; }
+      .details-row.open { display: table-row; }
+      .details-cell {
+        padding: 12px 10px 16px;
+        border-bottom: 1px solid #e6ecf8;
+      }
+      .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px 18px;
+        font-size: 14px;
+        color: #2d3b5e;
+      }
+      .detail-label { color: #6b7a99; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+      .detail-block { display: grid; gap: 4px; }
+      .detail-wide { grid-column: 1 / -1; }
+      .card .details { display: none; margin-top: 10px; }
+      .card .details.open { display: grid; gap: 6px; }
     </style>
   </head>
   <body>
@@ -218,6 +256,10 @@ export class AdminController {
       <p>Список существующих квестов. Можно удалить и перейти к форме добавления.</p>
       <div class="actions">
         <a class="btn" href="/admin/quests/add">Добавить квест</a>
+        <label class="lang">
+          <span>Язык</span>
+          <select id="lang-select"></select>
+        </label>
         <div id="status" class="status">Загружаю...</div>
       </div>
       <table class="desktop">
@@ -229,7 +271,7 @@ export class AdminController {
             <th>Длительность</th>
             <th>Цена</th>
             <th>Активен</th>
-            <th></th>
+            <th>Действия</th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -241,6 +283,7 @@ export class AdminController {
       const rowsEl = document.getElementById('rows');
       const statusEl = document.getElementById('status');
       const cardsEl = document.getElementById('cards');
+      const langSelect = document.getElementById('lang-select');
 
       function setStatus(text, kind) {
         statusEl.textContent = text;
@@ -248,9 +291,50 @@ export class AdminController {
         if (kind) statusEl.classList.add(kind);
       }
 
+      function getLangFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('lang');
+      }
+
+      function setLangInUrl(code) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('lang', code);
+        const next = window.location.pathname + '?' + params.toString();
+        window.history.replaceState(null, '', next);
+      }
+
+      async function loadLanguages() {
+        const res = await fetch('/admin/api/languages');
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          const msg = data?.message || data?.error || 'Ошибка загрузки языков';
+          throw new Error(msg);
+        }
+        langSelect.innerHTML = '';
+        data.forEach((lang) => {
+          const opt = document.createElement('option');
+          opt.value = lang.code;
+          opt.textContent = lang.name
+            ? String(lang.name) + ' (' + String(lang.code) + ')'
+            : String(lang.code);
+          if (lang.isDefault) opt.dataset.default = 'true';
+          langSelect.appendChild(opt);
+        });
+        const urlLang = getLangFromUrl();
+        const defaultOpt =
+          langSelect.querySelector('option[data-default="true"]') ||
+          langSelect.querySelector('option');
+        const preferred = urlLang || (defaultOpt ? defaultOpt.value : '');
+        if (preferred) {
+          langSelect.value = preferred;
+          setLangInUrl(preferred);
+        }
+      }
+
       async function loadQuests() {
         setStatus('Загружаю...', null);
-        const res = await fetch('/admin/api/quests');
+        const lang = langSelect.value;
+        const res = await fetch('/admin/api/quests?lang=' + encodeURIComponent(lang));
         const data = await res.json();
         if (!res.ok) {
           throw new Error(data?.message || data?.error || 'Ошибка загрузки');
@@ -265,6 +349,7 @@ export class AdminController {
       }
 
       function renderRow(q) {
+        const frag = document.createDocumentFragment();
         const tr = document.createElement('tr');
         tr.innerHTML =
           '<td>' + (q.title || '-') + '</td>' +
@@ -273,7 +358,52 @@ export class AdminController {
           '<td>' + q.duration + ' мин</td>' +
           '<td>' + q.price + '</td>' +
           '<td>' + (q.is_active ? 'да' : 'нет') + '</td>' +
-          '<td><button class="delete">Удалить</button></td>';
+          '<td>' +
+            '<button class="secondary toggle">Подробнее</button> ' +
+            '<button class="delete">Удалить</button>' +
+          '</td>';
+
+        const detailsRow = document.createElement('tr');
+        detailsRow.className = 'details-row';
+        detailsRow.innerHTML =
+          '<td class="details-cell" colspan="7">' +
+            '<div class="detail-grid">' +
+              '<div class="detail-block">' +
+                '<div class="detail-label">ID</div>' +
+                '<div>' + q.id + '</div>' +
+              '</div>' +
+              '<div class="detail-block">' +
+                '<div class="detail-label">Дистанция</div>' +
+                '<div>' + q.distance + ' км</div>' +
+              '</div>' +
+              '<div class="detail-block">' +
+                '<div class="detail-label">Сложность</div>' +
+                '<div>' + q.difficulty + '</div>' +
+              '</div>' +
+              '<div class="detail-block">' +
+                '<div class="detail-label">Длительность</div>' +
+                '<div>' + q.duration + ' мин</div>' +
+              '</div>' +
+              '<div class="detail-block">' +
+                '<div class="detail-label">Цена</div>' +
+                '<div>' + q.price + '</div>' +
+              '</div>' +
+              '<div class="detail-block">' +
+                '<div class="detail-label">Активен</div>' +
+                '<div>' + (q.is_active ? 'да' : 'нет') + '</div>' +
+              '</div>' +
+              '<div class="detail-block detail-wide">' +
+                '<div class="detail-label">Описание</div>' +
+                '<div>' + (q.description || '-') + '</div>' +
+              '</div>' +
+            '</div>' +
+          '</td>';
+
+        const toggleBtn = tr.querySelector('button.toggle');
+        toggleBtn.addEventListener('click', () => {
+          const isOpen = detailsRow.classList.toggle('open');
+          toggleBtn.textContent = isOpen ? 'Скрыть' : 'Подробнее';
+        });
 
         const delBtn = tr.querySelector('button.delete');
         delBtn.addEventListener('click', async () => {
@@ -297,7 +427,9 @@ export class AdminController {
           }
         });
 
-        return tr;
+        frag.appendChild(tr);
+        frag.appendChild(detailsRow);
+        return frag;
       }
 
       function renderCard(q) {
@@ -309,7 +441,21 @@ export class AdminController {
           '<div class="meta">Длительность: ' + q.duration + ' мин</div>' +
           '<div class="meta">Цена: ' + q.price + '</div>' +
           '<div class="meta">Активен: ' + (q.is_active ? 'да' : 'нет') + '</div>' +
+          '<button class="secondary toggle">Подробнее</button>' +
+          '<div class="details">' +
+            '<div class="meta">ID: ' + q.id + '</div>' +
+            '<div class="meta">Дистанция: ' + q.distance + ' км</div>' +
+            '<div class="meta">Сложность: ' + q.difficulty + '</div>' +
+            '<div class="meta">Описание: ' + (q.description || '-') + '</div>' +
+          '</div>' +
           '<button class="delete">Удалить</button>';
+
+        const toggleBtn = div.querySelector('button.toggle');
+        const detailsEl = div.querySelector('.details');
+        toggleBtn.addEventListener('click', () => {
+          const isOpen = detailsEl.classList.toggle('open');
+          toggleBtn.textContent = isOpen ? 'Скрыть' : 'Подробнее';
+        });
 
         const delBtn = div.querySelector('button.delete');
         delBtn.addEventListener('click', async () => {
@@ -336,10 +482,23 @@ export class AdminController {
         return div;
       }
 
-      loadQuests().catch((err) => {
-        const msg = err && err.message ? err.message : err;
-        setStatus('Ошибка: ' + msg, 'error');
+      langSelect.addEventListener('change', () => {
+        setLangInUrl(langSelect.value);
+        loadQuests().catch((err) => {
+          const msg = err && err.message ? err.message : err;
+          setStatus('Ошибка: ' + msg, 'error');
+        });
       });
+
+      (async () => {
+        try {
+          await loadLanguages();
+          await loadQuests();
+        } catch (err) {
+          const msg = err && err.message ? err.message : err;
+          setStatus('Ошибка: ' + msg, 'error');
+        }
+      })();
     </script>
   </body>
 </html>`;
@@ -1498,44 +1657,77 @@ export class AdminController {
   }
 
   @Get('api/quests')
-  async listQuests(): Promise<
+  async listQuests(@Query('lang') lang?: string): Promise<
     Array<{
       id: string;
       duration: number;
+      distance: number;
+      difficulty: number;
       price: number;
       is_active: boolean;
       title?: string;
       district?: string;
       city?: string;
+      description?: string;
     }>
   > {
-    const rows = await this.dataSource
+    const language = (lang ?? '').trim();
+    const defaultLangSql =
+      '(SELECT code FROM languages WHERE is_default = true LIMIT 1)';
+
+    const qb = this.dataSource
       .createQueryBuilder(QuestRecord, 'q')
       .leftJoin(
         QuestTranslation,
-        't',
-        't.quest_id = q.id AND t.language_code = (SELECT code FROM languages WHERE is_default = true LIMIT 1)'
+        't_lang',
+        language
+          ? 't_lang.quest_id = q.id AND t_lang.language_code = :lang'
+          : `t_lang.quest_id = q.id AND t_lang.language_code = ${defaultLangSql}`
+      )
+      .leftJoin(
+        QuestTranslation,
+        't_def',
+        `t_def.quest_id = q.id AND t_def.language_code = ${defaultLangSql}`
       )
       .select([
         'q.id as id',
         'q.duration as duration',
+        'q.distance as distance',
+        'q.difficulty as difficulty',
         'q.price as price',
         'q.is_active as is_active',
-        't.title as title',
-        't.district as district',
-        't.city as city',
+        language
+          ? 'COALESCE(t_lang.title, t_def.title) as title'
+          : 't_lang.title as title',
+        language
+          ? 'COALESCE(t_lang.district, t_def.district) as district'
+          : 't_lang.district as district',
+        language
+          ? 'COALESCE(t_lang.city, t_def.city) as city'
+          : 't_lang.city as city',
+        language
+          ? 'COALESCE(t_lang.description, t_def.description) as description'
+          : 't_lang.description as description',
       ])
-      .orderBy('q.created_at', 'DESC')
-      .getRawMany();
+      .orderBy('q.created_at', 'DESC');
+
+    if (language) {
+      qb.setParameter('lang', language);
+    }
+
+    const rows = await qb.getRawMany();
 
     return rows.map((row) => ({
       id: row.id,
       duration: Number(row.duration),
+      distance: Number(row.distance),
+      difficulty: Number(row.difficulty),
       price: Number(row.price),
       is_active: row.is_active === true || row.is_active === 't',
       title: row.title ?? undefined,
       district: row.district ?? undefined,
       city: row.city ?? undefined,
+      description: row.description ?? undefined,
     }));
   }
 
