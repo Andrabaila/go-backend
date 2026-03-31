@@ -136,6 +136,10 @@ export class AdminController {
           <h2>Locations</h2>
           <span>Координаты локаций</span>
         </a>
+        <a class="card" href="/admin/scenes">
+          <h2>Scenes</h2>
+          <span>Сцены и переводы</span>
+        </a>
       </div>
     </div>
     ${theme.script}
@@ -1358,6 +1362,341 @@ export class AdminController {
 </html>`;
   }
 
+  @Get('scenes')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  getScenesAdmin(): string {
+    const theme = renderThemeToggle();
+    return `<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin · Scenes</title>
+    <style>
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+        background: linear-gradient(135deg, #f8f6f1 0%, #f2f7ff 100%);
+        color: #1f2a44;
+      }
+      ${theme.style}
+      .wrap {
+        max-width: 1100px;
+        margin: 48px auto;
+        padding: 24px;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+      }
+      @media (max-width: 600px) {
+        .wrap { margin: 16px; padding: 16px; border-radius: 12px; }
+        table { display: block; overflow-x: auto; }
+        .actions { flex-direction: column; align-items: stretch; gap: 8px; }
+      }
+      h1 { margin: 0 0 16px; font-size: 28px; }
+      p { margin: 0 0 24px; color: #4a5875; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e6ecf8; vertical-align: top; }
+      th { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7a99; }
+      input[type="text"], select, textarea {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ccd6eb;
+        border-radius: 8px;
+        background: #f9fbff;
+        font: inherit;
+        color: inherit;
+      }
+      textarea {
+        min-height: 88px;
+        resize: vertical;
+      }
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+        align-items: end;
+      }
+      .actions button {
+        width: fit-content;
+      }
+      button {
+        border: 0;
+        padding: 10px 16px;
+        border-radius: 10px;
+        background: #2d6cdf;
+        color: white;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      button.delete { background: #d9534f; }
+      button:disabled { background: #9db7ea; cursor: not-allowed; }
+      .status { padding: 10px; border-radius: 10px; background: #f1f5ff; color: #2d3b5e; }
+      .status.error { background: #fff1f1; color: #8a2b2b; }
+      .status.success { background: #eefaf1; color: #1f6a37; }
+      .hint {
+        margin-top: 10px;
+        color: #6b7a99;
+        font-size: 13px;
+      }
+      code { word-break: break-all; }
+    </style>
+  </head>
+  <body>
+    ${theme.html}
+    <div class="wrap">
+      <h1>Scenes</h1>
+      <p>Список сцен из таблицы <code>scenes</code>. Можно добавить сцену с переводами и удалить её.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Location ID</th>
+            <th>Quest ID</th>
+            <th>Тип</th>
+            <th>Язык</th>
+            <th>Название</th>
+            <th>Описание</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="actions" style="margin-top: 20px;">
+        <select id="new-location-id">
+          <option value="">Выберите локацию</option>
+        </select>
+        <select id="new-quest-id">
+          <option value="">Выберите квест</option>
+        </select>
+        <select id="new-scene-type">
+          <option value="before" selected>before</option>
+          <option value="during">during</option>
+          <option value="after">after</option>
+        </select>
+        <select id="new-lang">
+          <option value="ru" selected>Русский</option>
+          <option value="en">English</option>
+          <option value="pl">Polski</option>
+          <option value="es">Español</option>
+          <option value="uk">Українська</option>
+        </select>
+        <input id="new-title" type="text" placeholder="название" />
+        <input id="new-desc" type="text" placeholder="описание" />
+        <button id="add-btn">Добавить</button>
+      </div>
+      <div class="hint">Для добавления нужны существующие <code>location_id</code> и <code>quest_id</code>.</div>
+      <div class="actions">
+        <div id="status" class="status">Загружаю...</div>
+      </div>
+    </div>
+
+    <script>
+      const rowsEl = document.getElementById('rows');
+      const statusEl = document.getElementById('status');
+      const addBtn = document.getElementById('add-btn');
+      const newLocationId = document.getElementById('new-location-id');
+      const newQuestId = document.getElementById('new-quest-id');
+      const newSceneType = document.getElementById('new-scene-type');
+      const newLang = document.getElementById('new-lang');
+      const newTitle = document.getElementById('new-title');
+      const newDesc = document.getElementById('new-desc');
+
+      function setStatus(text, kind) {
+        statusEl.textContent = text;
+        statusEl.classList.remove('error', 'success');
+        if (kind) statusEl.classList.add(kind);
+      }
+
+      function populateSelect(selectEl, items, placeholder) {
+        const previousValue = selectEl.value;
+        selectEl.innerHTML = '';
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = placeholder;
+        selectEl.appendChild(placeholderOption);
+        items.forEach((item) => {
+          const option = document.createElement('option');
+          option.value = item.value;
+          option.textContent = item.label;
+          selectEl.appendChild(option);
+        });
+        if (items.some((item) => item.value === previousValue)) {
+          selectEl.value = previousValue;
+        }
+      }
+
+      async function loadLocationOptions() {
+        const res = await fetch('/admin/api/locations');
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.message || data?.error || 'Ошибка загрузки локаций');
+        }
+        const byId = new Map();
+        data.forEach((item) => {
+          if (!byId.has(item.id)) {
+            byId.set(item.id, {
+              value: item.id,
+              label:
+                (item.title ? item.title + ' ' : '') +
+                '(' + item.lat + ', ' + item.lng + ') [' + item.id + ']',
+            });
+          }
+        });
+        populateSelect(
+          newLocationId,
+          Array.from(byId.values()),
+          'Выберите локацию'
+        );
+      }
+
+      async function loadQuestOptions() {
+        const lang = String(newLang.value || 'ru').trim();
+        const res = await fetch('/admin/api/quests?lang=' + encodeURIComponent(lang));
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.message || data?.error || 'Ошибка загрузки квестов');
+        }
+        populateSelect(
+          newQuestId,
+          data.map((item) => ({
+            value: item.id,
+            label:
+              (item.title || 'Без названия') +
+              ' [' + item.id + ']',
+          })),
+          'Выберите квест'
+        );
+      }
+
+      async function loadFormOptions() {
+        await Promise.all([loadLocationOptions(), loadQuestOptions()]);
+      }
+
+      async function loadScenes() {
+        setStatus('Загружаю...', null);
+        const res = await fetch('/admin/api/scenes');
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.message || data?.error || 'Ошибка загрузки');
+        }
+        rowsEl.innerHTML = '';
+        data.forEach((item) => rowsEl.appendChild(renderRow(item)));
+        setStatus('Готово', 'success');
+      }
+
+      function renderRow(item) {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td><code>' + item.id + '</code></td>' +
+          '<td><code>' + item.locationId + '</code></td>' +
+          '<td><code>' + item.questId + '</code></td>' +
+          '<td>' + item.sceneType + '</td>' +
+          '<td>' + (item.languageCode || '') + '</td>' +
+          '<td>' + (item.title || '') + '</td>' +
+          '<td>' + (item.description || '') + '</td>' +
+          '<td><button class="delete">Удалить</button></td>';
+
+        const delBtn = tr.querySelector('button.delete');
+        delBtn.addEventListener('click', async () => {
+          if (!confirm('Удалить сцену?')) return;
+          delBtn.disabled = true;
+          try {
+            const res = await fetch('/admin/api/scenes/' + encodeURIComponent(item.id), {
+              method: 'DELETE',
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+              const msg = data?.message || data?.error || 'Ошибка удаления';
+              throw new Error(msg);
+            }
+            await loadScenes();
+          } catch (err) {
+            const msg = err && err.message ? err.message : err;
+            setStatus('Ошибка: ' + msg, 'error');
+          } finally {
+            delBtn.disabled = false;
+          }
+        });
+        return tr;
+      }
+
+      Promise.all([loadScenes(), loadFormOptions()]).catch((err) => {
+        const msg = err && err.message ? err.message : err;
+        setStatus('Ошибка: ' + msg, 'error');
+      });
+
+      newLang.addEventListener('change', () => {
+        loadQuestOptions().catch((err) => {
+          const msg = err && err.message ? err.message : err;
+          setStatus('Ошибка: ' + msg, 'error');
+        });
+      });
+
+      addBtn.addEventListener('click', async () => {
+        const locationId = String(newLocationId.value || '').trim();
+        const questId = String(newQuestId.value || '').trim();
+        const sceneType = String(newSceneType.value || '').trim();
+        const languageCode = String(newLang.value || '').trim();
+        const title = String(newTitle.value || '').trim();
+        const description = String(newDesc.value || '').trim();
+        if (!locationId || !questId) {
+          setStatus('Location ID и Quest ID обязательны', 'error');
+          return;
+        }
+        if (!sceneType) {
+          setStatus('Тип сцены обязателен', 'error');
+          return;
+        }
+        if (!languageCode) {
+          setStatus('Язык обязателен', 'error');
+          return;
+        }
+        if (!title || !description) {
+          setStatus('Название и описание обязательны', 'error');
+          return;
+        }
+        addBtn.disabled = true;
+        try {
+          const res = await fetch('/admin/api/scenes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location_id: locationId,
+              quest_id: questId,
+              scene_type: sceneType,
+              title,
+              description,
+              language_code: languageCode,
+            }),
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            const msg = data?.message || data?.error || 'Ошибка добавления';
+            throw new Error(msg);
+          }
+          newLocationId.value = '';
+          newQuestId.value = '';
+          newSceneType.value = 'before';
+          newTitle.value = '';
+          newDesc.value = '';
+          await Promise.all([loadScenes(), loadFormOptions()]);
+        } catch (err) {
+          const msg = err && err.message ? err.message : err;
+          setStatus('Ошибка: ' + msg, 'error');
+        } finally {
+          addBtn.disabled = false;
+        }
+      });
+    </script>
+    ${theme.script}
+  </body>
+</html>`;
+  }
+
   @Get('api/ui')
   async listUi(): Promise<Array<{ id: string; name: string }>> {
     const rows = await this.dataSource.query(
@@ -1401,6 +1740,206 @@ export class AdminController {
     );
     if (!rows.length) {
       throw new NotFoundException('UI item not found');
+    }
+    return { ok: true };
+  }
+
+  @Get('api/scenes')
+  async listScenes(): Promise<
+    Array<{
+      id: string;
+      locationId: string;
+      questId: string;
+      sceneType: string;
+      languageCode: string | null;
+      title: string | null;
+      description: string | null;
+    }>
+  > {
+    const rows = await this.dataSource.query(
+      `SELECT s.id,
+              s.location_id,
+              s.quest_id,
+              s.scene_type,
+              st.language_code,
+              st.title,
+              st.description
+         FROM scenes s
+         LEFT JOIN scene_translations st
+           ON st.scene_id = s.id
+        ORDER BY s.id ASC, st.language_code ASC`
+    );
+    return rows.map(
+      (row: {
+        id: string;
+        location_id: string;
+        quest_id: string;
+        scene_type: string;
+        language_code: string | null;
+        title: string | null;
+        description: string | null;
+      }) => ({
+        id: String(row.id),
+        locationId: String(row.location_id),
+        questId: String(row.quest_id),
+        sceneType: String(row.scene_type),
+        languageCode: row.language_code ?? null,
+        title: row.title ?? null,
+        description: row.description ?? null,
+      })
+    );
+  }
+
+  @Post('api/scenes')
+  async createScene(
+    @Body()
+    body: {
+      location_id?: string;
+      quest_id?: string;
+      scene_type?: string;
+      title?: string;
+      description?: string;
+      language_code?: string;
+    }
+  ): Promise<{
+    id: string;
+    locationId: string;
+    questId: string;
+    sceneType: string;
+    languageCode: string;
+    title: string | null;
+    description: string | null;
+  }> {
+    try {
+      if (!body || typeof body !== 'object') {
+        throw new BadRequestException('Request body is required');
+      }
+      const locationId = String(body.location_id || '').trim();
+      const questId = String(body.quest_id || '').trim();
+      const sceneType = String(body.scene_type || '')
+        .trim()
+        .toLowerCase();
+      const languageCode = String(body.language_code || '')
+        .trim()
+        .toLowerCase();
+      const title = (body.title ?? '').trim();
+      const description = (body.description ?? '').trim();
+      if (!locationId || !questId) {
+        throw new BadRequestException('Location id and quest id are required');
+      }
+      if (!['before', 'during', 'after'].includes(sceneType)) {
+        throw new BadRequestException(
+          'Scene type must be one of: before, during, after'
+        );
+      }
+      if (!languageCode) {
+        throw new BadRequestException('Language code is required');
+      }
+      if (!title || !description) {
+        throw new BadRequestException('Title and description are required');
+      }
+      const allowedLanguages = ['en', 'pl', 'ru', 'uk', 'es'];
+      let translations: Array<{
+        code: string;
+        title: string;
+        description: string;
+      }> = [];
+      try {
+        const availableLanguages = await getLibreLanguages();
+        const targetLanguages = availableLanguages.filter((code) =>
+          allowedLanguages.includes(code)
+        );
+        if (!targetLanguages.length) {
+          throw new Error('LibreTranslate returned no allowed languages');
+        }
+        if (!targetLanguages.includes(languageCode)) {
+          throw new Error(`Language ${languageCode} is not supported`);
+        }
+        for (const code of targetLanguages) {
+          if (code === languageCode) {
+            translations.push({ code, title, description });
+            continue;
+          }
+          const translatedTitle = await translateText(
+            title,
+            languageCode,
+            code
+          );
+          const translatedDescription = await translateText(
+            description,
+            languageCode,
+            code
+          );
+          translations.push({
+            code,
+            title: translatedTitle,
+            description: translatedDescription,
+          });
+        }
+      } catch (err) {
+        console.warn(
+          '[LibreTranslate] Scene translation failed, saving source only:',
+          err
+        );
+        translations = [{ code: languageCode, title, description }];
+      }
+      const result = await this.dataSource.transaction(async (manager) => {
+        const rows = await manager.query(
+          `INSERT INTO scenes (location_id, quest_id, scene_type)
+           VALUES ($1, $2, $3)
+           RETURNING id, location_id, quest_id, scene_type`,
+          [locationId, questId, sceneType]
+        );
+        const sceneId = rows[0]?.id;
+        if (!sceneId) {
+          throw new Error('Scene id not returned');
+        }
+        for (const item of translations) {
+          await manager.query(
+            `INSERT INTO scene_translations
+               (id, scene_id, language_code, title, description)
+             VALUES (uuid_generate_v4(), $1, $2, $3, $4)`,
+            [sceneId, item.code, item.title, item.description]
+          );
+        }
+        return {
+          id: String(sceneId),
+          locationId: String(rows[0].location_id),
+          questId: String(rows[0].quest_id),
+          sceneType: String(rows[0].scene_type),
+          languageCode,
+          title,
+          description,
+        };
+      });
+      return result;
+    } catch (err) {
+      if (err instanceof HttpException) {
+        throw err;
+      }
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message?: string }).message)
+          : 'Insert failed';
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Delete('api/scenes/:id')
+  async deleteScene(@Param('id') id: string): Promise<{ ok: true }> {
+    const deleted = await this.dataSource.transaction(async (manager) => {
+      await manager.query(
+        'DELETE FROM scene_translations WHERE scene_id = $1',
+        [id]
+      );
+      const rows = await manager.query(
+        'DELETE FROM scenes WHERE id = $1 RETURNING id',
+        [id]
+      );
+      return rows.length > 0;
+    });
+    if (!deleted) {
+      throw new NotFoundException('Scene not found');
     }
     return { ok: true };
   }
