@@ -1220,23 +1220,16 @@ export class AdminController {
             <th>ID</th>
             <th>Lat</th>
             <th>Lng</th>
-            <th>Язык</th>
-            <th>Название</th>
-            <th>Описание</th>
+            <th>Name</th>
+            <th>Type</th>
             <th></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
       <div class="actions" style="margin-top: 20px;">
-        <select id="new-lang">
-          <option value="ru" selected>Русский</option>
-          <option value="en">English</option>
-          <option value="pl">Polski</option>
-          <option value="es">Español</option>
-        </select>
-        <input id="new-title" type="text" placeholder="название (ru)" />
-        <input id="new-desc" type="text" placeholder="описание (ru)" />
+        <input id="new-name" type="text" placeholder="name" />
+        <input id="new-type" type="text" placeholder="type" />
         <input id="new-lat" type="number" step="0.000001" placeholder="lat" />
         <input id="new-lng" type="number" step="0.000001" placeholder="lng" />
         <button id="add-btn">Добавить</button>
@@ -1250,9 +1243,8 @@ export class AdminController {
       const rowsEl = document.getElementById('rows');
       const statusEl = document.getElementById('status');
       const addBtn = document.getElementById('add-btn');
-      const newLang = document.getElementById('new-lang');
-      const newTitle = document.getElementById('new-title');
-      const newDesc = document.getElementById('new-desc');
+      const newName = document.getElementById('new-name');
+      const newType = document.getElementById('new-type');
       const newLat = document.getElementById('new-lat');
       const newLng = document.getElementById('new-lng');
 
@@ -1280,9 +1272,8 @@ export class AdminController {
           '<td>' + item.id + '</td>' +
           '<td>' + item.lat + '</td>' +
           '<td>' + item.lng + '</td>' +
-          '<td>' + (item.languageCode || '') + '</td>' +
-          '<td>' + (item.title || '') + '</td>' +
-          '<td>' + (item.description || '') + '</td>' +
+          '<td>' + (item.name || '') + '</td>' +
+          '<td>' + (item.type || '') + '</td>' +
           '<td><button class="delete">Удалить</button></td>';
 
         const delBtn = tr.querySelector('button.delete');
@@ -1315,17 +1306,12 @@ export class AdminController {
       });
 
       addBtn.addEventListener('click', async () => {
-        const languageCode = String(newLang.value || '').trim();
-        const title = String(newTitle.value || '').trim();
-        const description = String(newDesc.value || '').trim();
+        const name = String(newName.value || '').trim();
+        const type = String(newType.value || '').trim();
         const lat = Number(newLat.value);
         const lng = Number(newLng.value);
-        if (!languageCode) {
-          setStatus('Язык обязателен', 'error');
-          return;
-        }
-        if (!title || !description) {
-          setStatus('Название и описание обязательны', 'error');
+        if (!name) {
+          setStatus('Name обязателен', 'error');
           return;
         }
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -1337,15 +1323,15 @@ export class AdminController {
           const res = await fetch('/admin/api/locations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lat, lng, title, description, language_code: languageCode }),
+            body: JSON.stringify({ lat, lng, name, type }),
           });
           const data = await res.json().catch(() => null);
           if (!res.ok) {
             const msg = data?.message || data?.error || 'Ошибка добавления';
             throw new Error(msg);
           }
-          newTitle.value = '';
-          newDesc.value = '';
+          newName.value = '';
+          newType.value = '';
           newLat.value = '';
           newLng.value = '';
           await loadLocations();
@@ -1541,7 +1527,8 @@ export class AdminController {
             byId.set(item.id, {
               value: item.id,
               label:
-                (item.title ? item.title + ' ' : '') +
+                (item.name ? item.name + ' ' : '') +
+                (item.type ? '[' + item.type + '] ' : '') +
                 '(' + item.lat + ', ' + item.lng + ') [' + item.id + ']',
             });
           }
@@ -1950,33 +1937,32 @@ export class AdminController {
       id: string;
       lat: number;
       lng: number;
-      languageCode: string | null;
-      title: string | null;
-      description: string | null;
+      name: string | null;
+      type: string | null;
     }>
   > {
     const rows = await this.dataSource.query(
-      `SELECT l.id, l.lat, l.lng, lt.language_code, lt.title, lt.description
-       FROM locations l
-       LEFT JOIN location_translations lt
-         ON lt.location_id = l.id
-       ORDER BY l.id ASC, lt.language_code ASC`
+      `SELECT l.id,
+              ST_Y(l.location::geometry) AS lat,
+              ST_X(l.location::geometry) AS lng,
+              l.name,
+              l.type
+         FROM locations l
+        ORDER BY l.id ASC`
     );
     return rows.map(
       (row: {
         id: string;
         lat: number | string;
         lng: number | string;
-        language_code: string | null;
-        title: string | null;
-        description: string | null;
+        name: string | null;
+        type: string | null;
       }) => ({
         id: String(row.id),
         lat: Number(row.lat),
         lng: Number(row.lng),
-        languageCode: row.language_code ?? null,
-        title: row.title ?? null,
-        description: row.description ?? null,
+        name: row.name ?? null,
+        type: row.type ?? null,
       })
     );
   }
@@ -1987,110 +1973,51 @@ export class AdminController {
     body: {
       lat?: number;
       lng?: number;
-      title?: string;
-      description?: string;
-      language_code?: string;
+      name?: string;
+      type?: string;
     }
   ): Promise<{
     id: string;
     lat: number;
     lng: number;
-    languageCode: string;
-    title: string | null;
-    description: string | null;
+    name: string | null;
+    type: string | null;
   }> {
     try {
       if (!body || typeof body !== 'object') {
         throw new BadRequestException('Request body is required');
       }
-      const languageCode = String(body.language_code || '')
-        .trim()
-        .toLowerCase();
-      const title = (body.title ?? '').trim();
-      const description = (body.description ?? '').trim();
+      const name = (body.name ?? '').trim();
+      const type = (body.type ?? '').trim();
       const lat = Number(body.lat);
       const lng = Number(body.lng);
-      if (!languageCode) {
-        throw new BadRequestException('Language code is required');
-      }
-      if (!title || !description) {
-        throw new BadRequestException('Title and description are required');
+      if (!name) {
+        throw new BadRequestException('Name is required');
       }
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
         throw new BadRequestException('Lat and lng are required');
       }
-      const allowedLanguages = ['en', 'pl', 'ru', 'uk', 'es'];
-      let translations: Array<{
-        code: string;
-        title: string;
-        description: string;
-      }> = [];
-      try {
-        const availableLanguages = await getLibreLanguages();
-        const targetLanguages = availableLanguages.filter((code) =>
-          allowedLanguages.includes(code)
-        );
-        if (!targetLanguages.length) {
-          throw new Error('LibreTranslate returned no allowed languages');
-        }
-        if (!targetLanguages.includes(languageCode)) {
-          throw new Error(`Language ${languageCode} is not supported`);
-        }
-        for (const code of targetLanguages) {
-          if (code === languageCode) {
-            translations.push({ code, title, description });
-            continue;
-          }
-          const translatedTitle = await translateText(
-            title,
-            languageCode,
-            code
-          );
-          const translatedDescription = await translateText(
-            description,
-            languageCode,
-            code
-          );
-          translations.push({
-            code,
-            title: translatedTitle,
-            description: translatedDescription,
-          });
-        }
-      } catch (err) {
-        console.warn(
-          '[LibreTranslate] Location translation failed, saving source only:',
-          err
-        );
-        translations = [{ code: languageCode, title, description }];
+      const rows = await this.dataSource.query(
+        `INSERT INTO locations (location, name, type)
+         VALUES (ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3, $4)
+         RETURNING id,
+                   ST_Y(location::geometry) AS lat,
+                   ST_X(location::geometry) AS lng,
+                   name,
+                   type`,
+        [lng, lat, name, type || null]
+      );
+      const result = rows[0];
+      if (!result?.id) {
+        throw new Error('Location id not returned');
       }
-      const result = await this.dataSource.transaction(async (manager) => {
-        const rows = await manager.query(
-          'INSERT INTO locations (lat, lng) VALUES ($1, $2) RETURNING id, lat, lng',
-          [lat, lng]
-        );
-        const locationId = rows[0]?.id;
-        if (!locationId) {
-          throw new Error('Location id not returned');
-        }
-        for (const item of translations) {
-          await manager.query(
-            `INSERT INTO location_translations
-               (id, location_id, language_code, title, description)
-             VALUES (uuid_generate_v4(), $1, $2, $3, $4)`,
-            [locationId, item.code, item.title, item.description]
-          );
-        }
-        return {
-          id: String(locationId),
-          lat: Number(rows[0].lat),
-          lng: Number(rows[0].lng),
-          languageCode,
-          title,
-          description,
-        };
-      });
-      return result;
+      return {
+        id: String(result.id),
+        lat: Number(result.lat),
+        lng: Number(result.lng),
+        name: result.name ?? null,
+        type: result.type ?? null,
+      };
     } catch (err) {
       if (err instanceof HttpException) {
         throw err;
