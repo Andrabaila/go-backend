@@ -1,5 +1,4 @@
 import 'dotenv/config';
-import net from 'node:net';
 import { URL } from 'node:url';
 
 import { Module } from '@nestjs/common';
@@ -25,36 +24,7 @@ import { Language } from './quests/language.entity.js';
 import { requireEnv } from './common/env.js';
 
 function getDatabaseHost(): string {
-  return (
-    process.env.DATABASE_HOST ||
-    process.env.DATABASE_HOST_FALLBACK ||
-    'localhost'
-  );
-}
-
-function canReachHost(
-  host: string,
-  port: number,
-  timeoutMs = 1500
-): Promise<boolean> {
-  return new Promise((resolve) => {
-    const socket = net.createConnection({ host, port });
-    let resolved = false;
-
-    const finish = (isReachable: boolean) => {
-      if (resolved) {
-        return;
-      }
-      resolved = true;
-      socket.destroy();
-      resolve(isReachable);
-    };
-
-    socket.setTimeout(timeoutMs);
-    socket.once('connect', () => finish(true));
-    socket.once('timeout', () => finish(false));
-    socket.once('error', () => finish(false));
-  });
+  return process.env.DATABASE_HOST || 'localhost';
 }
 
 async function getDatabaseConnectionOptions(): Promise<TypeOrmModuleOptions> {
@@ -80,30 +50,18 @@ async function getDatabaseConnectionOptions(): Promise<TypeOrmModuleOptions> {
   }
 
   const primaryHost = getDatabaseHost();
-  const fallbackHost = process.env.DATABASE_HOST_FALLBACK;
   const port = Number(requireEnv('DATABASE_PORT'));
   const database = requireEnv('DATABASE_NAME');
   const username = requireEnv('DATABASE_USERNAME');
   const password = requireEnv('DATABASE_PASSWORD');
-  let selectedHost = primaryHost;
-
-  if (fallbackHost && fallbackHost !== primaryHost) {
-    const primaryReachable = await canReachHost(primaryHost, port);
-    if (!primaryReachable) {
-      console.warn(
-        `[DB] Primary host ${primaryHost}:${port} is unreachable. Falling back to ${fallbackHost}:${port}`
-      );
-      selectedHost = fallbackHost;
-    }
-  }
 
   console.log(
-    `[DB] Using env PostgreSQL connection host=${selectedHost} port=${port} database=${database}`
+    `[DB] Using env PostgreSQL connection host=${primaryHost} port=${port} database=${database}`
   );
 
   return {
     type: 'postgres',
-    host: selectedHost,
+    host: primaryHost,
     port,
     username,
     password,
