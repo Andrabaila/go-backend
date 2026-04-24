@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { DataSource } from 'typeorm';
 
 type DbStatus = {
@@ -10,17 +12,92 @@ type DbStatus = {
   source?: 'url' | 'env' | 'unknown';
 };
 
-const STATUS_RELEASE = {
-  version: '1.4.2',
-  deployedAt: '2026-04-24 14:37 UTC',
-  commit: 'a1b2c3d',
-} as const;
+const PROCESS_STARTED_AT = new Date();
 
 const PREFERRED_ADDRESSES = [
   'http://100.110.45.76:3000',
   'https://localhost:3000',
   'http://localhost:3000',
 ] as const;
+
+type ReleaseInfo = {
+  version: string;
+  deployedAt: string;
+  commit: string;
+};
+
+function safeRead(filePath: string): string | undefined {
+  try {
+    return readFileSync(filePath, 'utf8').trim();
+  } catch {
+    return undefined;
+  }
+}
+
+function formatUtc(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const hours = String(date.getUTCHours()).padStart(2, '0');
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds} UTC`;
+}
+
+function getPackageVersion(): string {
+  const fromEnv = safeString(process.env.APP_VERSION ?? process.env.VERSION);
+  if (fromEnv) return fromEnv;
+
+  try {
+    const packageJsonPath = resolve(process.cwd(), 'package.json');
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
+      version?: unknown;
+    };
+    return safeString(packageJson.version) ?? 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+function readGitHeadCommit(): string | undefined {
+  const gitDir = resolve(process.cwd(), '.git');
+  const head = safeRead(resolve(gitDir, 'HEAD'));
+  if (!head) return undefined;
+
+  if (head.startsWith('ref:')) {
+    const refPath = head.replace(/^ref:\s*/, '');
+    const refValue = safeRead(resolve(gitDir, refPath));
+    return refValue ? refValue.slice(0, 7) : undefined;
+  }
+
+  return head.slice(0, 7);
+}
+
+function getReleaseInfo(): ReleaseInfo {
+  const commit =
+    safeString(
+      process.env.APP_COMMIT_SHA ??
+        process.env.COMMIT_SHA ??
+        process.env.GIT_COMMIT ??
+        process.env.VERCEL_GIT_COMMIT_SHA
+    ) ??
+    readGitHeadCommit() ??
+    'unknown';
+
+  const deployedAt =
+    safeString(
+      process.env.APP_DEPLOYED_AT ??
+        process.env.DEPLOYED_AT ??
+        process.env.BUILD_TIME ??
+        process.env.BUILD_TIMESTAMP
+    ) ?? formatUtc(PROCESS_STARTED_AT);
+
+  return {
+    version: getPackageVersion(),
+    deployedAt,
+    commit,
+  };
+}
 
 function safeString(value: unknown): string | undefined {
   if (value === null || value === undefined) return undefined;
@@ -87,15 +164,16 @@ export function renderDbStatusBar(
   html: string;
 } {
   const status = getDbStatus(dataSource);
-  const stateText = status.connected ? 'Подключено' : 'Не подключено';
+  const release = getReleaseInfo();
+  const stateText = status.connected ? 'Connected' : 'Disconnected';
   const stateClass = status.connected ? 'ok' : 'err';
   const dbFacts = [
-    { label: 'тип', value: status.type ?? 'postgres' },
+    { label: 'type', value: status.type ?? 'postgres' },
     { label: 'host', value: status.host },
     { label: 'port', value: status.port ? String(status.port) : undefined },
     { label: 'db', value: status.database },
     { label: 'user', value: status.username },
-    { label: 'источник', value: status.source },
+    { label: 'source', value: status.source },
   ].filter((item) => item.value);
   const uniqueAddresses = Array.from(
     new Set(
@@ -111,11 +189,11 @@ export function renderDbStatusBar(
             `<a class="db-link" href="${addr}" target="_blank" rel="noreferrer">${addr}</a>`
         )
         .join('')
-    : '<span class="db-empty">не определены</span>';
+    : '<span class="db-empty">not available</span>';
   const releaseFacts = [
-    { label: 'Version', value: STATUS_RELEASE.version },
-    { label: 'Deployed', value: STATUS_RELEASE.deployedAt },
-    { label: 'Commit', value: STATUS_RELEASE.commit },
+    { label: 'Version', value: release.version },
+    { label: 'Deployed', value: release.deployedAt },
+    { label: 'Commit', value: release.commit },
   ];
   const releaseHtml = releaseFacts
     .map(
@@ -130,7 +208,7 @@ export function renderDbStatusBar(
             `<div class="db-item"><span class="db-label">${item.label}</span><strong>${item.value}</strong></div>`
         )
         .join('')
-    : '<span class="db-empty">данные подключения недоступны</span>';
+    : '<span class="db-empty">connection details are unavailable</span>';
 
   return {
     style: `
@@ -290,13 +368,13 @@ export function renderDbStatusBar(
     html: `
       <div class="db-bar ${stateClass}">
         <div class="db-row">
-          <div class="db-title">Статус</div>
+          <div class="db-title">Status</div>
           <div class="db-content">
             <span class="badge">DB: ${stateText}</span>
           </div>
         </div>
         <div class="db-row">
-          <div class="db-title">Релиз</div>
+          <div class="db-title">Release</div>
           <div class="db-content">${releaseHtml}</div>
         </div>
         <div class="db-row">
@@ -304,7 +382,7 @@ export function renderDbStatusBar(
           <div class="db-content">${dbFactsHtml}</div>
         </div>
         <div class="db-row">
-          <div class="db-title">Адреса</div>
+          <div class="db-title">Addresses</div>
           <div class="db-links">${addressesHtml}</div>
         </div>
       </div>

@@ -117,28 +117,28 @@ export class AdminController {
     ${theme.html}
     ${dbStatus.html}
     <div class="wrap">
-      <h1>Админка</h1>
-      <p>Быстрые ссылки на управление справочниками.</p>
+      <h1>Admin Panel</h1>
+      <p>Quick links for managing reference data.</p>
       <div class="grid">
         <a class="card" href="/admin/quests">
-          <h2>Квесты</h2>
-          <span>Добавление и перевод</span>
+          <h2>Quests</h2>
+          <span>Create and translate quests</span>
         </a>
         <a class="card" href="/admin/languages">
-          <h2>Языки</h2>
-          <span>Справочник языков и default</span>
+          <h2>Languages</h2>
+          <span>Language list and default flag</span>
         </a>
         <a class="card" href="/admin/ui">
           <h2>UI</h2>
-          <span>Сущности интерфейса</span>
+          <span>Interface entities</span>
         </a>
         <a class="card" href="/admin/locations">
           <h2>Locations</h2>
-          <span>Координаты локаций</span>
+          <span>Location coordinates</span>
         </a>
         <a class="card" href="/admin/scenes">
           <h2>Scenes</h2>
-          <span>Сцены и переводы</span>
+          <span>Scenes and translations</span>
         </a>
       </div>
     </div>
@@ -256,26 +256,26 @@ export class AdminController {
   <body>
     ${theme.html}
     <div class="wrap">
-      <h1>Квесты</h1>
-      <p>Список существующих квестов. Можно удалить и перейти к форме добавления.</p>
+      <h1>Quests</h1>
+      <p>List of existing quests. You can delete a quest or open the creation form.</p>
       <div class="actions">
-        <a class="btn" href="/admin/quests/add">Добавить квест</a>
+        <a class="btn" href="/admin/quests/add">Add Quest</a>
         <label class="lang">
-          <span>Язык</span>
+          <span>Language</span>
           <select id="lang-select"></select>
         </label>
-        <div id="status" class="status">Загружаю...</div>
+        <div id="status" class="status">Loading...</div>
       </div>
       <table class="desktop">
         <thead>
           <tr>
-            <th>Название</th>
-            <th>Город</th>
-            <th>Район</th>
-            <th>Длительность</th>
-            <th>Цена</th>
-            <th>Активен</th>
-            <th>Действия</th>
+            <th>Title</th>
+            <th>City</th>
+            <th>District</th>
+            <th>Duration</th>
+            <th>Price</th>
+            <th>Active</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -311,7 +311,7 @@ export class AdminController {
         const res = await fetch('/admin/api/languages');
         const data = await res.json().catch(() => null);
         if (!res.ok) {
-          const msg = data?.message || data?.error || 'Ошибка загрузки языков';
+          const msg = data?.message || data?.error || 'Failed to load languages';
           throw new Error(msg);
         }
         langSelect.innerHTML = '';
@@ -336,12 +336,12 @@ export class AdminController {
       }
 
       async function loadQuests() {
-        setStatus('Загружаю...', null);
+        setStatus('Loading...', null);
         const lang = langSelect.value;
         const res = await fetch('/admin/api/quests?lang=' + encodeURIComponent(lang));
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data?.message || data?.error || 'Ошибка загрузки');
+          throw new Error(data?.message || data?.error || 'Failed to load data');
         }
         rowsEl.innerHTML = '';
         cardsEl.innerHTML = '';
@@ -349,7 +349,7 @@ export class AdminController {
           rowsEl.appendChild(renderRow(q));
           cardsEl.appendChild(renderCard(q));
         });
-        setStatus('Готово', 'success');
+        setStatus('Done', 'success');
       }
 
       function renderRow(q) {
@@ -359,12 +359,12 @@ export class AdminController {
           '<td>' + (q.title || '-') + '</td>' +
           '<td>' + (q.city || '-') + '</td>' +
           '<td>' + (q.district || '-') + '</td>' +
-          '<td>' + q.duration + ' мин</td>' +
+          '<td>' + q.duration + ' min</td>' +
           '<td>' + q.price + '</td>' +
-          '<td>' + (q.is_active ? 'да' : 'нет') + '</td>' +
+          '<td>' + (q.is_active ? 'yes' : 'no') + '</td>' +
           '<td>' +
-            '<button class="secondary toggle">Подробнее</button> ' +
-            '<button class="delete">Удалить</button>' +
+            '<button class="secondary toggle">Details</button> ' +
+            '<button class="delete">Delete</button>' +
           '</td>';
 
         const detailsRow = document.createElement('tr');
@@ -377,27 +377,27 @@ export class AdminController {
                 '<div>' + q.id + '</div>' +
               '</div>' +
               '<div class="detail-block">' +
-                '<div class="detail-label">Дистанция</div>' +
-                '<div>' + q.distance + ' км</div>' +
+                '<div class="detail-label">Distance</div>' +
+                '<div>' + q.distance + ' km</div>' +
               '</div>' +
               '<div class="detail-block">' +
-                '<div class="detail-label">Сложность</div>' +
+                '<div class="detail-label">Difficulty</div>' +
                 '<div>' + q.difficulty + '</div>' +
               '</div>' +
               '<div class="detail-block">' +
-                '<div class="detail-label">Длительность</div>' +
-                '<div>' + q.duration + ' мин</div>' +
+                '<div class="detail-label">Duration</div>' +
+                '<div>' + q.duration + ' min</div>' +
               '</div>' +
               '<div class="detail-block">' +
-                '<div class="detail-label">Цена</div>' +
+                '<div class="detail-label">Price</div>' +
                 '<div>' + q.price + '</div>' +
               '</div>' +
               '<div class="detail-block">' +
-                '<div class="detail-label">Активен</div>' +
-                '<div>' + (q.is_active ? 'да' : 'нет') + '</div>' +
+                '<div class="detail-label">Active</div>' +
+                '<div>' + (q.is_active ? 'yes' : 'no') + '</div>' +
               '</div>' +
               '<div class="detail-block detail-wide">' +
-                '<div class="detail-label">Описание</div>' +
+                '<div class="detail-label">Description</div>' +
                 '<div>' + (q.description || '-') + '</div>' +
               '</div>' +
             '</div>' +
@@ -406,12 +406,12 @@ export class AdminController {
         const toggleBtn = tr.querySelector('button.toggle');
         toggleBtn.addEventListener('click', () => {
           const isOpen = detailsRow.classList.toggle('open');
-          toggleBtn.textContent = isOpen ? 'Скрыть' : 'Подробнее';
+          toggleBtn.textContent = isOpen ? 'Hide' : 'Details';
         });
 
         const delBtn = tr.querySelector('button.delete');
         delBtn.addEventListener('click', async () => {
-          if (!confirm('Удалить квест?')) return;
+          if (!confirm('Delete quest?')) return;
           delBtn.disabled = true;
           try {
             const res = await fetch('/admin/api/quests/' + encodeURIComponent(q.id), {
@@ -419,13 +419,13 @@ export class AdminController {
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) {
-              const msg = data?.message || data?.error || 'Ошибка удаления';
+              const msg = data?.message || data?.error || 'Failed to delete quest';
               throw new Error(msg);
             }
             await loadQuests();
           } catch (err) {
             const msg = err && err.message ? err.message : err;
-            setStatus('Ошибка: ' + msg, 'error');
+            setStatus('Error: ' + msg, 'error');
           } finally {
             delBtn.disabled = false;
           }
@@ -442,28 +442,28 @@ export class AdminController {
         div.innerHTML =
           '<h3>' + (q.title || '-') + '</h3>' +
           '<div class="meta">' + (q.city || '-') + ' · ' + (q.district || '-') + '</div>' +
-          '<div class="meta">Длительность: ' + q.duration + ' мин</div>' +
-          '<div class="meta">Цена: ' + q.price + '</div>' +
-          '<div class="meta">Активен: ' + (q.is_active ? 'да' : 'нет') + '</div>' +
-          '<button class="secondary toggle">Подробнее</button>' +
+          '<div class="meta">Duration: ' + q.duration + ' min</div>' +
+          '<div class="meta">Price: ' + q.price + '</div>' +
+          '<div class="meta">Active: ' + (q.is_active ? 'yes' : 'no') + '</div>' +
+          '<button class="secondary toggle">Details</button>' +
           '<div class="details">' +
             '<div class="meta">ID: ' + q.id + '</div>' +
-            '<div class="meta">Дистанция: ' + q.distance + ' км</div>' +
-            '<div class="meta">Сложность: ' + q.difficulty + '</div>' +
-            '<div class="meta">Описание: ' + (q.description || '-') + '</div>' +
+            '<div class="meta">Distance: ' + q.distance + ' km</div>' +
+            '<div class="meta">Difficulty: ' + q.difficulty + '</div>' +
+            '<div class="meta">Description: ' + (q.description || '-') + '</div>' +
           '</div>' +
-          '<button class="delete">Удалить</button>';
+          '<button class="delete">Delete</button>';
 
         const toggleBtn = div.querySelector('button.toggle');
         const detailsEl = div.querySelector('.details');
         toggleBtn.addEventListener('click', () => {
           const isOpen = detailsEl.classList.toggle('open');
-          toggleBtn.textContent = isOpen ? 'Скрыть' : 'Подробнее';
+          toggleBtn.textContent = isOpen ? 'Hide' : 'Details';
         });
 
         const delBtn = div.querySelector('button.delete');
         delBtn.addEventListener('click', async () => {
-          if (!confirm('Удалить квест?')) return;
+          if (!confirm('Delete quest?')) return;
           delBtn.disabled = true;
           try {
             const res = await fetch('/admin/api/quests/' + encodeURIComponent(q.id), {
@@ -471,13 +471,13 @@ export class AdminController {
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) {
-              const msg = data?.message || data?.error || 'Ошибка удаления';
+              const msg = data?.message || data?.error || 'Failed to delete quest';
               throw new Error(msg);
             }
             await loadQuests();
           } catch (err) {
             const msg = err && err.message ? err.message : err;
-            setStatus('Ошибка: ' + msg, 'error');
+            setStatus('Error: ' + msg, 'error');
           } finally {
             delBtn.disabled = false;
           }
@@ -490,7 +490,7 @@ export class AdminController {
         setLangInUrl(langSelect.value);
         loadQuests().catch((err) => {
           const msg = err && err.message ? err.message : err;
-          setStatus('Ошибка: ' + msg, 'error');
+          setStatus('Error: ' + msg, 'error');
         });
       });
 
@@ -500,7 +500,7 @@ export class AdminController {
           await loadQuests();
         } catch (err) {
           const msg = err && err.message ? err.message : err;
-          setStatus('Ошибка: ' + msg, 'error');
+          setStatus('Error: ' + msg, 'error');
         }
       })();
     </script>
@@ -609,63 +609,63 @@ export class AdminController {
   <body>
     ${theme.html}
     <div class="wrap">
-      <h1>Добавить квест</h1>
-      <p>Форма создаёт запись в <code>quests</code> и переводит поля через LibreTranslate на доступные языки.</p>
+      <h1>Add Quest</h1>
+      <p>This form creates a record in <code>quests</code> and translates fields through LibreTranslate into the available languages.</p>
 
       <form id="quest-form">
         <div class="row">
-          <label>Длительность (мин)
+          <label>Duration (min)
             <input name="duration" type="number" min="1" step="1" required />
           </label>
-          <label>Дистанция (км)
+          <label>Distance (km)
             <input name="distance" type="number" min="0" step="0.1" required />
           </label>
-          <label>Сложность (1-5)
+          <label>Difficulty (1-5)
             <input name="difficulty" type="number" min="1" max="5" step="1" required />
           </label>
-          <label>Цена
+          <label>Price
             <input name="price" type="number" min="0" step="0.01" required />
           </label>
         </div>
 
         <label>
-          Активен
+          Active
           <input name="is_active" type="checkbox" checked />
         </label>
 
-        <label>Язык
+        <label>Language
           <select name="language_code" required>
-            <option value="ru" selected>Русский</option>
+            <option value="ru" selected>Russian</option>
             <option value="en">English</option>
-            <option value="pl">Polski</option>
-            <option value="es">Español</option>
-            <option value="de">Deutsch</option>
-            <option value="fr">Français</option>
-            <option value="pt">Português</option>
-            <option value="ja">日本語</option>
-            <option value="uk">Українська</option>
-            <option value="ar">العربية</option>
+            <option value="pl">Polish</option>
+            <option value="es">Spanish</option>
+            <option value="de">German</option>
+            <option value="fr">French</option>
+            <option value="pt">Portuguese</option>
+            <option value="ja">Japanese</option>
+            <option value="uk">Ukrainian</option>
+            <option value="ar">Arabic</option>
           </select>
         </label>
 
-        <label>Название
+        <label>Title
           <input name="title" type="text" required />
         </label>
-        <label>Описание
+        <label>Description
           <textarea name="description" required></textarea>
         </label>
         <div class="row">
-          <label>Район
+          <label>District
             <input name="district" type="text" required />
           </label>
-          <label>Город
+          <label>City
             <input name="city" type="text" required />
           </label>
         </div>
 
         <div class="actions">
-          <button type="submit" id="submit">Создать квест</button>
-          <div id="status" class="status">Готово к отправке.</div>
+          <button type="submit" id="submit">Create Quest</button>
+          <div id="status" class="status">Ready to submit.</div>
         </div>
       </form>
     </div>
@@ -683,7 +683,7 @@ export class AdminController {
 
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
-        setStatus('Отправляю запрос...', null);
+        setStatus('Sending request...', null);
         submitBtn.disabled = true;
 
         const formData = new FormData(form);
@@ -709,15 +709,15 @@ export class AdminController {
 
           const data = await res.json().catch(() => null);
           if (!res.ok) {
-            const msg = data?.message || data?.error || 'Ошибка запроса';
+            const msg = data?.message || data?.error || 'Request failed';
             throw new Error(msg);
           }
 
-          setStatus('Квест создан. Переводы сохранены.', 'success');
+          setStatus('Quest created. Translations saved.', 'success');
           form.reset();
         } catch (err) {
           const msg = (err && err.message) ? err.message : err;
-          setStatus('Ошибка: ' + msg, 'error');
+          setStatus('Error: ' + msg, 'error');
         } finally {
           submitBtn.disabled = false;
         }
@@ -797,8 +797,8 @@ export class AdminController {
   <body>
     ${theme.html}
     <div class="wrap">
-      <h1>Языки</h1>
-      <p>Список языков из таблицы <code>languages</code>. Можно менять имя и флаг default.</p>
+      <h1>Languages</h1>
+      <p>List of languages from the <code>languages</code> table. You can edit the name and default flag.</p>
       <table>
         <thead>
           <tr>
@@ -817,10 +817,10 @@ export class AdminController {
           <input id="new-default" type="checkbox" />
           Default
         </label>
-        <button id="add-btn">Добавить</button>
+        <button id="add-btn">Add</button>
       </div>
       <div class="actions">
-        <div id="status" class="status">Загружаю...</div>
+        <div id="status" class="status">Loading...</div>
       </div>
     </div>
 
@@ -839,15 +839,15 @@ export class AdminController {
       }
 
       async function loadLanguages() {
-        setStatus('Загружаю...', null);
+        setStatus('Loading...', null);
         const res = await fetch('/admin/api/languages');
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data?.message || data?.error || 'Ошибка загрузки');
+          throw new Error(data?.message || data?.error || 'Failed to load languages');
         }
         rowsEl.innerHTML = '';
         data.forEach((lang) => rowsEl.appendChild(renderRow(lang)));
-        setStatus('Готово', 'success');
+        setStatus('Done', 'success');
       }
 
       function renderRow(lang) {
@@ -862,7 +862,7 @@ export class AdminController {
           '<td><input type="checkbox" ' +
           (lang.isDefault ? 'checked' : '') +
           ' /></td>' +
-          '<td><div class="lang-actions"><button class="save">Сохранить</button><button class="delete" style="background:#d9534f;">Удалить</button></div></td>';
+          '<td><div class="lang-actions"><button class="save">Save</button><button class="delete" style="background:#d9534f;">Delete</button></div></td>';
 
         const input = tr.querySelector('input[type="text"]');
         const checkbox = tr.querySelector('input[type="checkbox"]');
@@ -880,24 +880,24 @@ export class AdminController {
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) {
-              const msg = data?.message || data?.error || 'Ошибка сохранения';
+              const msg = data?.message || data?.error || 'Failed to save language';
               throw new Error(msg);
             }
             if (payload.is_default) {
               await loadLanguages();
             } else {
-              setStatus('Сохранено', 'success');
+              setStatus('Saved', 'success');
             }
           } catch (err) {
             const msg = err && err.message ? err.message : err;
-            setStatus('Ошибка: ' + msg, 'error');
+            setStatus('Error: ' + msg, 'error');
           } finally {
             saveBtn.disabled = false;
           }
         });
 
         deleteBtn.addEventListener('click', async () => {
-          if (!confirm('Удалить язык ' + lang.code + '?')) return;
+          if (!confirm('Delete language ' + lang.code + '?')) return;
           deleteBtn.disabled = true;
           try {
             const res = await fetch('/admin/api/languages/' + encodeURIComponent(lang.code), {
@@ -905,13 +905,13 @@ export class AdminController {
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) {
-              const msg = data?.message || data?.error || 'Ошибка удаления';
+              const msg = data?.message || data?.error || 'Failed to delete language';
               throw new Error(msg);
             }
             await loadLanguages();
           } catch (err) {
             const msg = err && err.message ? err.message : err;
-            setStatus('Ошибка: ' + msg, 'error');
+            setStatus('Error: ' + msg, 'error');
           } finally {
             deleteBtn.disabled = false;
           }
@@ -922,7 +922,7 @@ export class AdminController {
 
       loadLanguages().catch((err) => {
         const msg = err && err.message ? err.message : err;
-        setStatus('Ошибка: ' + msg, 'error');
+        setStatus('Error: ' + msg, 'error');
       });
 
       addBtn.addEventListener('click', async () => {
@@ -930,7 +930,7 @@ export class AdminController {
         const name = String(newName.value || '').trim();
         const isDefault = !!newDefault.checked;
         if (!code || !name) {
-          setStatus('Код и имя обязательны', 'error');
+          setStatus('Code and name are required', 'error');
           return;
         }
         addBtn.disabled = true;
@@ -942,7 +942,7 @@ export class AdminController {
           });
           const data = await res.json().catch(() => null);
           if (!res.ok) {
-            const msg = data?.message || data?.error || 'Ошибка добавления';
+            const msg = data?.message || data?.error || 'Failed to add language';
             throw new Error(msg);
           }
           newCode.value = '';
@@ -951,7 +951,7 @@ export class AdminController {
           await loadLanguages();
         } catch (err) {
           const msg = err && err.message ? err.message : err;
-          setStatus('Ошибка: ' + msg, 'error');
+          setStatus('Error: ' + msg, 'error');
         } finally {
           addBtn.disabled = false;
         }
@@ -1027,7 +1027,7 @@ export class AdminController {
     ${theme.html}
     <div class="wrap">
       <h1>UI</h1>
-      <p>Список сущностей интерфейса из таблицы <code>ui</code>. Можно добавить и удалить.</p>
+      <p>List of interface entities from the <code>ui</code> table. You can add and delete items.</p>
       <table>
         <thead>
           <tr>
@@ -1040,10 +1040,10 @@ export class AdminController {
       </table>
       <div class="actions" style="margin-top: 20px;">
         <input id="new-name" type="text" placeholder="name" />
-        <button id="add-btn">Добавить</button>
+        <button id="add-btn">Add</button>
       </div>
       <div class="actions">
-        <div id="status" class="status">Загружаю...</div>
+        <div id="status" class="status">Loading...</div>
       </div>
     </div>
 
@@ -1060,15 +1060,15 @@ export class AdminController {
       }
 
       async function loadUi() {
-        setStatus('Загружаю...', null);
+        setStatus('Loading...', null);
         const res = await fetch('/admin/api/ui');
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data?.message || data?.error || 'Ошибка загрузки');
+          throw new Error(data?.message || data?.error || 'Failed to load UI entries');
         }
         rowsEl.innerHTML = '';
         data.forEach((item) => rowsEl.appendChild(renderRow(item)));
-        setStatus('Готово', 'success');
+        setStatus('Done', 'success');
       }
 
       function renderRow(item) {
@@ -1076,11 +1076,11 @@ export class AdminController {
         tr.innerHTML =
           '<td>' + item.id + '</td>' +
           '<td>' + item.name + '</td>' +
-          '<td><button class="delete">Удалить</button></td>';
+          '<td><button class="delete">Delete</button></td>';
 
         const delBtn = tr.querySelector('button.delete');
         delBtn.addEventListener('click', async () => {
-          if (!confirm('Удалить элемент?')) return;
+          if (!confirm('Delete item?')) return;
           delBtn.disabled = true;
           try {
             const res = await fetch('/admin/api/ui/' + encodeURIComponent(item.id), {
@@ -1088,13 +1088,13 @@ export class AdminController {
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) {
-              const msg = data?.message || data?.error || 'Ошибка удаления';
+              const msg = data?.message || data?.error || 'Failed to delete item';
               throw new Error(msg);
             }
             await loadUi();
           } catch (err) {
             const msg = err && err.message ? err.message : err;
-            setStatus('Ошибка: ' + msg, 'error');
+            setStatus('Error: ' + msg, 'error');
           } finally {
             delBtn.disabled = false;
           }
@@ -1104,13 +1104,13 @@ export class AdminController {
 
       loadUi().catch((err) => {
         const msg = err && err.message ? err.message : err;
-        setStatus('Ошибка: ' + msg, 'error');
+        setStatus('Error: ' + msg, 'error');
       });
 
       addBtn.addEventListener('click', async () => {
         const name = String(newName.value || '').trim();
         if (!name) {
-          setStatus('Name обязателен', 'error');
+          setStatus('Name is required', 'error');
           return;
         }
         addBtn.disabled = true;
@@ -1122,14 +1122,14 @@ export class AdminController {
           });
           const data = await res.json().catch(() => null);
           if (!res.ok) {
-            const msg = data?.message || data?.error || 'Ошибка добавления';
+            const msg = data?.message || data?.error || 'Failed to add item';
             throw new Error(msg);
           }
           newName.value = '';
           await loadUi();
         } catch (err) {
           const msg = err && err.message ? err.message : err;
-          setStatus('Ошибка: ' + msg, 'error');
+          setStatus('Error: ' + msg, 'error');
         } finally {
           addBtn.disabled = false;
         }
@@ -1213,7 +1213,7 @@ export class AdminController {
     ${theme.html}
     <div class="wrap">
       <h1>Locations</h1>
-      <p>Список координат из таблицы <code>locations</code>. Можно добавить и удалить.</p>
+      <p>List of coordinates from the <code>locations</code> table. You can add and delete locations.</p>
       <table>
         <thead>
           <tr>
@@ -1232,10 +1232,10 @@ export class AdminController {
         <input id="new-type" type="text" placeholder="type" />
         <input id="new-lat" type="number" step="0.000001" placeholder="lat" />
         <input id="new-lng" type="number" step="0.000001" placeholder="lng" />
-        <button id="add-btn">Добавить</button>
+        <button id="add-btn">Add</button>
       </div>
       <div class="actions">
-        <div id="status" class="status">Загружаю...</div>
+        <div id="status" class="status">Loading...</div>
       </div>
     </div>
 
@@ -1255,15 +1255,15 @@ export class AdminController {
       }
 
       async function loadLocations() {
-        setStatus('Загружаю...', null);
+        setStatus('Loading...', null);
         const res = await fetch('/admin/api/locations');
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data?.message || data?.error || 'Ошибка загрузки');
+          throw new Error(data?.message || data?.error || 'Failed to load locations');
         }
         rowsEl.innerHTML = '';
         data.forEach((item) => rowsEl.appendChild(renderRow(item)));
-        setStatus('Готово', 'success');
+        setStatus('Done', 'success');
       }
 
       function renderRow(item) {
@@ -1274,11 +1274,11 @@ export class AdminController {
           '<td>' + item.lng + '</td>' +
           '<td>' + (item.name || '') + '</td>' +
           '<td>' + (item.type || '') + '</td>' +
-          '<td><button class="delete">Удалить</button></td>';
+          '<td><button class="delete">Delete</button></td>';
 
         const delBtn = tr.querySelector('button.delete');
         delBtn.addEventListener('click', async () => {
-          if (!confirm('Удалить локацию?')) return;
+          if (!confirm('Delete location?')) return;
           delBtn.disabled = true;
           try {
             const res = await fetch('/admin/api/locations/' + encodeURIComponent(item.id), {
@@ -1286,13 +1286,13 @@ export class AdminController {
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) {
-              const msg = data?.message || data?.error || 'Ошибка удаления';
+              const msg = data?.message || data?.error || 'Failed to delete location';
               throw new Error(msg);
             }
             await loadLocations();
           } catch (err) {
             const msg = err && err.message ? err.message : err;
-            setStatus('Ошибка: ' + msg, 'error');
+            setStatus('Error: ' + msg, 'error');
           } finally {
             delBtn.disabled = false;
           }
@@ -1302,7 +1302,7 @@ export class AdminController {
 
       loadLocations().catch((err) => {
         const msg = err && err.message ? err.message : err;
-        setStatus('Ошибка: ' + msg, 'error');
+        setStatus('Error: ' + msg, 'error');
       });
 
       addBtn.addEventListener('click', async () => {
@@ -1311,11 +1311,11 @@ export class AdminController {
         const lat = Number(newLat.value);
         const lng = Number(newLng.value);
         if (!name) {
-          setStatus('Name обязателен', 'error');
+          setStatus('Name is required', 'error');
           return;
         }
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-          setStatus('Lat и Lng обязательны', 'error');
+          setStatus('Lat and Lng are required', 'error');
           return;
         }
         addBtn.disabled = true;
@@ -1327,7 +1327,7 @@ export class AdminController {
           });
           const data = await res.json().catch(() => null);
           if (!res.ok) {
-            const msg = data?.message || data?.error || 'Ошибка добавления';
+            const msg = data?.message || data?.error || 'Failed to add location';
             throw new Error(msg);
           }
           newName.value = '';
@@ -1337,7 +1337,7 @@ export class AdminController {
           await loadLocations();
         } catch (err) {
           const msg = err && err.message ? err.message : err;
-          setStatus('Ошибка: ' + msg, 'error');
+          setStatus('Error: ' + msg, 'error');
         } finally {
           addBtn.disabled = false;
         }
@@ -1435,17 +1435,17 @@ export class AdminController {
     ${theme.html}
     <div class="wrap">
       <h1>Scenes</h1>
-      <p>Список сцен из таблицы <code>scenes</code>. Можно добавить сцену с переводами и удалить её.</p>
+      <p>List of scenes from the <code>scenes</code> table. You can add a translated scene and delete it.</p>
       <table>
         <thead>
           <tr>
             <th>ID</th>
             <th>Location ID</th>
             <th>Quest ID</th>
-            <th>Тип</th>
-            <th>Язык</th>
-            <th>Название</th>
-            <th>Описание</th>
+            <th>Type</th>
+            <th>Language</th>
+            <th>Title</th>
+            <th>Description</th>
             <th></th>
           </tr>
         </thead>
@@ -1453,10 +1453,10 @@ export class AdminController {
       </table>
       <div class="actions" style="margin-top: 20px;">
         <select id="new-location-id">
-          <option value="">Выберите локацию</option>
+          <option value="">Select location</option>
         </select>
         <select id="new-quest-id">
-          <option value="">Выберите квест</option>
+          <option value="">Select quest</option>
         </select>
         <select id="new-scene-type">
           <option value="before" selected>before</option>
@@ -1464,19 +1464,19 @@ export class AdminController {
           <option value="after">after</option>
         </select>
         <select id="new-lang">
-          <option value="ru" selected>Русский</option>
+          <option value="ru" selected>Russian</option>
           <option value="en">English</option>
-          <option value="pl">Polski</option>
-          <option value="es">Español</option>
-          <option value="uk">Українська</option>
+          <option value="pl">Polish</option>
+          <option value="es">Spanish</option>
+          <option value="uk">Ukrainian</option>
         </select>
-        <input id="new-title" type="text" placeholder="название" />
-        <input id="new-desc" type="text" placeholder="описание" />
-        <button id="add-btn">Добавить</button>
+        <input id="new-title" type="text" placeholder="title" />
+        <input id="new-desc" type="text" placeholder="description" />
+        <button id="add-btn">Add</button>
       </div>
-      <div class="hint">Для добавления нужны существующие <code>location_id</code> и <code>quest_id</code>.</div>
+      <div class="hint">Adding a scene requires existing <code>location_id</code> and <code>quest_id</code> values.</div>
       <div class="actions">
-        <div id="status" class="status">Загружаю...</div>
+        <div id="status" class="status">Loading...</div>
       </div>
     </div>
 
@@ -1519,7 +1519,7 @@ export class AdminController {
         const res = await fetch('/admin/api/locations');
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data?.message || data?.error || 'Ошибка загрузки локаций');
+          throw new Error(data?.message || data?.error || 'Failed to load locations');
         }
         const byId = new Map();
         data.forEach((item) => {
@@ -1536,7 +1536,7 @@ export class AdminController {
         populateSelect(
           newLocationId,
           Array.from(byId.values()),
-          'Выберите локацию'
+          'Select location'
         );
       }
 
@@ -1545,17 +1545,17 @@ export class AdminController {
         const res = await fetch('/admin/api/quests?lang=' + encodeURIComponent(lang));
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data?.message || data?.error || 'Ошибка загрузки квестов');
+          throw new Error(data?.message || data?.error || 'Failed to load quests');
         }
         populateSelect(
           newQuestId,
           data.map((item) => ({
             value: item.id,
             label:
-              (item.title || 'Без названия') +
+              (item.title || 'Untitled') +
               ' [' + item.id + ']',
           })),
-          'Выберите квест'
+          'Select quest'
         );
       }
 
@@ -1564,15 +1564,15 @@ export class AdminController {
       }
 
       async function loadScenes() {
-        setStatus('Загружаю...', null);
+        setStatus('Loading...', null);
         const res = await fetch('/admin/api/scenes');
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data?.message || data?.error || 'Ошибка загрузки');
+          throw new Error(data?.message || data?.error || 'Failed to load scenes');
         }
         rowsEl.innerHTML = '';
         data.forEach((item) => rowsEl.appendChild(renderRow(item)));
-        setStatus('Готово', 'success');
+        setStatus('Done', 'success');
       }
 
       function renderRow(item) {
@@ -1585,11 +1585,11 @@ export class AdminController {
           '<td>' + (item.languageCode || '') + '</td>' +
           '<td>' + (item.title || '') + '</td>' +
           '<td>' + (item.description || '') + '</td>' +
-          '<td><button class="delete">Удалить</button></td>';
+          '<td><button class="delete">Delete</button></td>';
 
         const delBtn = tr.querySelector('button.delete');
         delBtn.addEventListener('click', async () => {
-          if (!confirm('Удалить сцену?')) return;
+          if (!confirm('Delete scene?')) return;
           delBtn.disabled = true;
           try {
             const res = await fetch('/admin/api/scenes/' + encodeURIComponent(item.id), {
@@ -1597,13 +1597,13 @@ export class AdminController {
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) {
-              const msg = data?.message || data?.error || 'Ошибка удаления';
+              const msg = data?.message || data?.error || 'Failed to delete scene';
               throw new Error(msg);
             }
             await loadScenes();
           } catch (err) {
             const msg = err && err.message ? err.message : err;
-            setStatus('Ошибка: ' + msg, 'error');
+            setStatus('Error: ' + msg, 'error');
           } finally {
             delBtn.disabled = false;
           }
@@ -1613,13 +1613,13 @@ export class AdminController {
 
       Promise.all([loadScenes(), loadFormOptions()]).catch((err) => {
         const msg = err && err.message ? err.message : err;
-        setStatus('Ошибка: ' + msg, 'error');
+        setStatus('Error: ' + msg, 'error');
       });
 
       newLang.addEventListener('change', () => {
         loadQuestOptions().catch((err) => {
           const msg = err && err.message ? err.message : err;
-          setStatus('Ошибка: ' + msg, 'error');
+          setStatus('Error: ' + msg, 'error');
         });
       });
 
@@ -1631,19 +1631,19 @@ export class AdminController {
         const title = String(newTitle.value || '').trim();
         const description = String(newDesc.value || '').trim();
         if (!locationId || !questId) {
-          setStatus('Location ID и Quest ID обязательны', 'error');
+          setStatus('Location ID and Quest ID are required', 'error');
           return;
         }
         if (!sceneType) {
-          setStatus('Тип сцены обязателен', 'error');
+          setStatus('Scene type is required', 'error');
           return;
         }
         if (!languageCode) {
-          setStatus('Язык обязателен', 'error');
+          setStatus('Language is required', 'error');
           return;
         }
         if (!title || !description) {
-          setStatus('Название и описание обязательны', 'error');
+          setStatus('Title and description are required', 'error');
           return;
         }
         addBtn.disabled = true;
@@ -1662,7 +1662,7 @@ export class AdminController {
           });
           const data = await res.json().catch(() => null);
           if (!res.ok) {
-            const msg = data?.message || data?.error || 'Ошибка добавления';
+            const msg = data?.message || data?.error || 'Failed to add scene';
             throw new Error(msg);
           }
           newLocationId.value = '';
@@ -1673,7 +1673,7 @@ export class AdminController {
           await Promise.all([loadScenes(), loadFormOptions()]);
         } catch (err) {
           const msg = err && err.message ? err.message : err;
-          setStatus('Ошибка: ' + msg, 'error');
+          setStatus('Error: ' + msg, 'error');
         } finally {
           addBtn.disabled = false;
         }
