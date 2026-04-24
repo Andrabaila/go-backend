@@ -148,11 +148,11 @@ export function renderThemeToggle(): ThemeParts {
     `,
     html: `
       <div class="theme-toggle">
-        <label for="theme-select">Тема</label>
+        <label for="theme-select">Theme</label>
         <select id="theme-select">
-          <option value="system">Как в системе</option>
-          <option value="light">Светлая</option>
-          <option value="dark">Темная</option>
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
         </select>
       </div>
     `,

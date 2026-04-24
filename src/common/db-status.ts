@@ -87,15 +87,15 @@ export function renderDbStatusBar(
   html: string;
 } {
   const status = getDbStatus(dataSource);
-  const stateText = status.connected ? 'Подключено' : 'Не подключено';
+  const stateText = status.connected ? 'Connected' : 'Disconnected';
   const stateClass = status.connected ? 'ok' : 'err';
   const dbFacts = [
-    { label: 'тип', value: status.type ?? 'postgres' },
+    { label: 'type', value: status.type ?? 'postgres' },
     { label: 'host', value: status.host },
     { label: 'port', value: status.port ? String(status.port) : undefined },
     { label: 'db', value: status.database },
     { label: 'user', value: status.username },
-    { label: 'источник', value: status.source },
+    { label: 'source', value: status.source },
   ].filter((item) => item.value);
   const uniqueAddresses = Array.from(
     new Set(
@@ -111,7 +111,7 @@ export function renderDbStatusBar(
             `<a class="db-link" href="${addr}" target="_blank" rel="noreferrer">${addr}</a>`
         )
         .join('')
-    : '<span class="db-empty">не определены</span>';
+    : '<span class="db-empty">not available</span>';
   const releaseFacts = [
     { label: 'Version', value: STATUS_RELEASE.version },
     { label: 'Deployed', value: STATUS_RELEASE.deployedAt },
@@ -130,7 +130,7 @@ export function renderDbStatusBar(
             `<div class="db-item"><span class="db-label">${item.label}</span><strong>${item.value}</strong></div>`
         )
         .join('')
-    : '<span class="db-empty">данные подключения недоступны</span>';
+    : '<span class="db-empty">connection details are unavailable</span>';
 
   return {
     style: `
@@ -290,13 +290,13 @@ export function renderDbStatusBar(
     html: `
       <div class="db-bar ${stateClass}">
         <div class="db-row">
-          <div class="db-title">Статус</div>
+          <div class="db-title">Status</div>
           <div class="db-content">
             <span class="badge">DB: ${stateText}</span>
           </div>
         </div>
         <div class="db-row">
-          <div class="db-title">Релиз</div>
+          <div class="db-title">Release</div>
           <div class="db-content">${releaseHtml}</div>
         </div>
         <div class="db-row">
@@ -304,7 +304,7 @@ export function renderDbStatusBar(
           <div class="db-content">${dbFactsHtml}</div>
         </div>
         <div class="db-row">
-          <div class="db-title">Адреса</div>
+          <div class="db-title">Addresses</div>
           <div class="db-links">${addressesHtml}</div>
         </div>
       </div>
