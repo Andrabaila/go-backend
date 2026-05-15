@@ -25,6 +25,10 @@ export class QuestsService {
   constructor(
     @InjectRepository(Quest)
     private readonly questRepo: Repository<Quest>,
+    @InjectRepository(QuestRecord)
+    private readonly questRecordRepo: Repository<QuestRecord>,
+    @InjectRepository(QuestTranslation)
+    private readonly questTranslationRepo: Repository<QuestTranslation>,
     private readonly dataSource: DataSource
   ) {}
 
@@ -81,6 +85,80 @@ export class QuestsService {
 
     await this.questRepo.update(id, { progress, status: nextStatus });
     return this.findById(id);
+  }
+
+  async findUserQuest(userId: string, id: string): Promise<Quest | null> {
+    return this.questRepo.findOne({
+      where: { id, playerId: userId },
+      relations: ['player'],
+    });
+  }
+
+  async activateForUser(
+    userId: string,
+    questRecordId: string,
+    languageCode = 'ru'
+  ): Promise<Quest | null> {
+    const questRecord = await this.questRecordRepo.findOne({
+      where: { id: questRecordId, isActive: true },
+    });
+
+    if (!questRecord) return null;
+
+    const normalizedLanguageCode = languageCode.trim().toLowerCase() || 'ru';
+    const translation =
+      (await this.questTranslationRepo.findOne({
+        where: { questId: questRecordId, languageCode: normalizedLanguageCode },
+      })) ??
+      (await this.questTranslationRepo.findOne({
+        where: { questId: questRecordId, languageCode: 'ru' },
+      })) ??
+      (await this.questTranslationRepo.findOne({
+        where: { questId: questRecordId },
+      }));
+
+    const quest = this.questRepo.create({
+      title: translation?.title ?? 'Untitled quest',
+      description: translation?.description ?? '',
+      status: 'active',
+      playerId: userId,
+    });
+
+    return this.questRepo.save(quest);
+  }
+
+  async updateUserQuestStatus(
+    userId: string,
+    id: string,
+    status: 'active' | 'completed' | 'pending'
+  ): Promise<Quest | null> {
+    const quest = await this.findUserQuest(userId, id);
+    if (!quest) return null;
+
+    await this.questRepo.update(id, { status });
+    return this.findUserQuest(userId, id);
+  }
+
+  async updateUserQuestProgress(
+    userId: string,
+    id: string,
+    visitedPointIds: string[]
+  ): Promise<Quest | null> {
+    const quest = await this.findUserQuest(userId, id);
+    if (!quest) return null;
+
+    const progress = { visitedPointIds };
+    let nextStatus = quest.status;
+
+    if (
+      quest.objectives?.type === 'visit_points' &&
+      visitedPointIds.length >= quest.objectives.requiredCount
+    ) {
+      nextStatus = 'completed';
+    }
+
+    await this.questRepo.update(id, { progress, status: nextStatus });
+    return this.findUserQuest(userId, id);
   }
 
   async delete(id: string): Promise<void> {
