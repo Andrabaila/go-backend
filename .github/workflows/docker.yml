@@ -49,6 +49,8 @@ jobs:
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/go-backend:latest &&
             docker run -d \
               --env-file ${{ vars.SERVER_ENV_FILE }} \
+              -e APP_COMMIT_SHA=${{ github.sha }} \
+              -e APP_DEPLOYED_AT=\"\$(date -u '+%Y-%m-%d %H:%M:%S UTC')\" \
               --name go-backend \
               --restart always \
               -p 3000:3000 \

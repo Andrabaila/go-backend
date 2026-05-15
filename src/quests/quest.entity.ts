@@ -5,7 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Player } from '../players/player.entity.js';
+import { User } from '../users/user.entity.js';
 
 export interface QuestObjectivePoint {
   id: string;
@@ -55,9 +55,9 @@ export class Quest {
   @Column({ type: 'jsonb', nullable: true })
   reward?: QuestReward;
 
-  @ManyToOne(() => Player, { nullable: true })
+  @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'playerId' })
-  player?: Player;
+  player?: User;
 
   @Column({ nullable: true })
   playerId?: string;
